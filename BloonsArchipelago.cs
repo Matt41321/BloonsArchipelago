@@ -16,6 +16,7 @@ using System.Collections;
 using Il2CppAssets.Scripts.Unity.UI_New.InGame;
 using Il2CppAssets.Scripts.Unity;
 using Il2CppAssets.Scripts.Data;
+using Il2CppAssets.Scripts.Simulation.Towers;
 using UnityEngine;
 
 [assembly: MelonInfo(typeof(BloonsArchipelago.BloonsArchipelago), ModHelperData.Name, ModHelperData.Version, ModHelperData.RepoOwner)]
@@ -31,14 +32,12 @@ public class BloonsArchipelago : BloonsTD6Mod
 
     public static List<GameObject> vMapIndicators = new();
 
-    // Notification timing variables
     private static float mapLoadTime = 0f;
     private static bool mapLoaded = false;
     private static bool notificationDelayActive = false;
     private static float lastNotificationTime = 0f;
     private static Queue<string> pendingNotifications = new Queue<string>();
 
-    // Mod Settings; Used for Connection Purposes
     static readonly ModSettingString url = "archipelago.gg";
     static readonly ModSettingInt port = 25565;
     static readonly ModSettingString slot = "Player";
@@ -48,6 +47,16 @@ public class BloonsArchipelago : BloonsTD6Mod
         ModHelper.Msg<BloonsArchipelago>("Connecting...");
 
         sessionHandler = new SessionHandler(url, port, slot, password);
+    });
+    static readonly ModSettingButton refreshData = new(() =>
+    {
+        if (!sessionHandler.ready)
+        {
+            ModHelper.Msg<BloonsArchipelago>("Not connected — connect first.");
+            return;
+        }
+        sessionHandler.RefreshAllData();
+        ModHelper.Msg<BloonsArchipelago>("Data refreshed!");
     });
     static readonly ModSettingBool showNotifications = true;
 
@@ -75,18 +84,41 @@ public class BloonsArchipelago : BloonsTD6Mod
         ModHelper.Msg<BloonsArchipelago>("BloonsArchipelago loaded!");
     }
 
+    public override void OnTowerSold(Tower tower, float cashGained)
+    {
+        try
+        {
+            var sh = sessionHandler;
+            if (sh == null || !sh.ready || !sh.PopTierChecksEnabled) return;
+            string baseId = tower?.towerModel?.baseId;
+            if (string.IsNullOrEmpty(baseId)) return;
+            if (baseId == "MonkeyVillage") return;
+
+            long value = baseId == "BananaFarm"
+                ? (long)tower.cashEarned
+                : tower.pops;
+            long id = tower.Pointer.ToInt64();
+            sh.TowerInstanceStartPops.TryGetValue(id, out long startPops);
+            long delta = System.Math.Max(0, value - startPops);
+            sh.BankTowerPops(baseId, delta);
+            sh.SaveProgress();
+        }
+        catch { }
+    }
+
     public override void OnUpdate()
     {
-        if (InGame.instance == null) 
+        if (InGame.instance == null)
         {
-            // Reset map loaded state when not in game
             mapLoaded = false;
             mapLoadTime = 0f;
             notificationDelayActive = false;
+            Patches.HomeMenu.MonkeyTierDisplay.UpdateMonkeyTierDisplays();
             return;
         }
 
-        // Check if map just loaded
+        Patches.InMap.PopTierLockPatch.UpdateButtonDisplays();
+
         if (!mapLoaded)
         {
             mapLoaded = true;
@@ -94,7 +126,6 @@ public class BloonsArchipelago : BloonsTD6Mod
             notificationDelayActive = true;
         }
 
-        // Process new notifications and add them to pending queue
         for (int i = sessionHandler.notifications.Count - 1; i >= 0; i--)
         {
             string notification = sessionHandler.notifications[i];
@@ -110,15 +141,12 @@ public class BloonsArchipelago : BloonsTD6Mod
             }
         }
 
-        // Show notifications with delays
         if (notificationDelayActive && pendingNotifications.Count > 0)
         {
             float currentTime = Time.time;
-            
-            // Wait 1 second after map load before showing first notification
+
             if (currentTime - mapLoadTime >= 1f)
             {
-                // Check if enough time has passed since last notification (1 second delay between notifications)
                 if (currentTime - lastNotificationTime >= 1f)
                 {
                     string notification = pendingNotifications.Dequeue();

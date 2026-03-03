@@ -44,13 +44,5 @@ namespace BloonsArchipelago.Patches.InMap
             return true;
         }
 
-        //[HarmonyPostfix]
-        //private static void Postfix(TowerPurchaseButton __instance, TowerPurchaseLockState __result)
-        //{
-        //    if (__result == TowerPurchaseLockState.HasntBeenAquired)
-        //    {
-        //        ModHelper.Msg<BloonsArchipelago>(__instance.towerModel.name);
-        //    }
-        //}
     }
 }

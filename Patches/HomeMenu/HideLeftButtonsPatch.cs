@@ -12,8 +12,6 @@ namespace BloonsArchipelago.Patches.HomeMenu
             if (BloonsArchipelago.sessionHandler.ready)
             {
                 __instance.storeBtn.gameObject.SetActive(false);
-                //__instance.mrBeastEventStoreObj.SetActive(false);
-
 
                 __instance.achievementsBtn.gameObject.SetActive(false);
 

@@ -10,7 +10,7 @@ namespace BloonsArchipelago.Utils
         public float XP = 0.0f;
         public long XPToNext;
         public long MaxLevel;
-        public bool Maxed = false; //potentially not needed
+        public bool Maxed = false;
         public bool Curved = false;
 
         public ArchipelagoXP(int Level, float XP, long XPToNext, long MaxLevel, bool Curved)

@@ -1,4 +1,4 @@
-﻿using BTD_Mod_Helper;
+using BTD_Mod_Helper;
 using HarmonyLib;
 using Il2CppAssets.Scripts.Data.Knowledge;
 using Il2CppAssets.Scripts.Models.Knowledge;
@@ -12,40 +12,26 @@ namespace BloonsArchipelago.Patches.KnowledgeMenu
         [HarmonyPrefix]
         private static void Prefix(KnowledgeSkillBtn __instance, ref KnowlegdeSkillBtnState state)
         {
-            if (BloonsArchipelago.sessionHandler.ready)
+            var sh = BloonsArchipelago.sessionHandler;
+            if (!sh.ready) return;
+
+            KnowledgeModel model = KnowledgeHelper.GetKnowledge(__instance.knowledgeID);
+            if (!sh.KnowledgeUnlocked.Contains(model.name))
             {
-                KnowledgeModel model = KnowledgeHelper.GetKnowledge(__instance.knowledgeID);
-                string[] prereqs = model.prerequisiteIds;
-                if (BloonsArchipelago.sessionHandler.KnowledgeUnlocked.Contains(model.name))
-                {
-                    if (BloonsArchipelago.sessionHandler.LocationChecked(model.name + "-Tree"))
-                    {
-                        state = KnowlegdeSkillBtnState.Purchased;
-                    }
-                    else
-                    {
-                        bool available = true;
-                        foreach (string prereq in prereqs)
-                        {
-                            if (!BloonsArchipelago.sessionHandler.LocationChecked(prereq + "-Tree"))
-                            {
-                                available = false;
-                            }
-                        }
-                        if (available)
-                        {
-                            state = KnowlegdeSkillBtnState.Available;
-                        }
-                        else
-                        {
-                            state = KnowlegdeSkillBtnState.Locked;
-                        }
-                    }
-                }
+                state = KnowlegdeSkillBtnState.Locked;
+                return;
+            }
+
+            if (sh.ProgressiveKnowledgeMode)
+            {
+                state = KnowlegdeSkillBtnState.Purchased;
+            }
+            else
+            {
+                if (sh.LocationChecked(model.name + "-Tree"))
+                    state = KnowlegdeSkillBtnState.Purchased;
                 else
-                {
-                    state = KnowlegdeSkillBtnState.Locked;
-                }
+                    state = KnowlegdeSkillBtnState.Available;
             }
         }
     }

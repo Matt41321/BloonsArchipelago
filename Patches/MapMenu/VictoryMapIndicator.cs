@@ -1,4 +1,4 @@
-﻿using BTD_Mod_Helper;
+using BTD_Mod_Helper;
 using BTD_Mod_Helper.Api;
 using BTD_Mod_Helper.Extensions;
 using HarmonyLib;
@@ -39,9 +39,7 @@ namespace BloonsArchipelago.Patches.MapMenu
         private static void Prefix()
         {
             foreach (GameObject indicator in BloonsArchipelago.vMapIndicators)
-            {
                 indicator.Destroy();
-            }
             BloonsArchipelago.vMapIndicators.Clear();
         }
     }
@@ -53,9 +51,7 @@ namespace BloonsArchipelago.Patches.MapMenu
         private static void Prefix()
         {
             foreach (GameObject indicator in BloonsArchipelago.vMapIndicators)
-            {
                 indicator.Destroy();
-            }
             BloonsArchipelago.vMapIndicators.Clear();
         }
     }
@@ -67,9 +63,7 @@ namespace BloonsArchipelago.Patches.MapMenu
         private static void Prefix()
         {
             foreach (GameObject indicator in BloonsArchipelago.vMapIndicators)
-            {
                 indicator.Destroy();
-            }
             BloonsArchipelago.vMapIndicators.Clear();
         }
     }

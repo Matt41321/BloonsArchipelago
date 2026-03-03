@@ -12,4 +12,24 @@ namespace BloonsArchipelago.Patches.BTD6Player
             return false;
         }
     }
+
+    [HarmonyPatch(typeof(Btd6Player), nameof(Btd6Player.CompleteGoldenBloon))]
+    internal class CompleteGoldenBloonSuppression
+    {
+        [HarmonyPrefix]
+        private static bool Prefix()
+        {
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Btd6Player), nameof(Btd6Player.GenerateNewGoldenBloonMap))]
+    internal class GenerateGoldenBloonSuppression
+    {
+        [HarmonyPrefix]
+        private static bool Prefix()
+        {
+            return false;
+        }
+    }
 }
