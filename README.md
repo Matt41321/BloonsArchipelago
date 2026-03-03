@@ -12,7 +12,7 @@ Currently in super early development, if you find any bugs please report them in
 ## Setup
 1. Download and run Melon Loader Installer
 1. Download the MelonLoader.Windows.x64.CI.Release.zip
-2. Select Bloons TD 6 and under the Select a version click <u>Or select a zipped version</u> and select the MelonLoader.Windows.x64.CI.Release.zip
+2. Select Bloons TD 6 and under the Select a version click "Or select a zipped version" and select the MelonLoader.Windows.x64.CI.Release.zip
 3. Open BTD6 WITHOUT any mods installed
 4. Open your BTD6 folder and open mods
 5. Put Both BTD6 Mod Helper and Bloons Archipelago into the Mods folder.
