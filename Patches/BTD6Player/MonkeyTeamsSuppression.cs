@@ -28,4 +28,11 @@ namespace BloonsArchipelago.Patches.BTD6Player
             return false;
         }
     }
+
+    [HarmonyPatch(typeof(Btd6Player), nameof(Btd6Player.UpdateMonkeyTeamsMaps))]
+    internal class UpdateMonkeyTeamsSuppression
+    {
+        [HarmonyPrefix]
+        private static bool Prefix() => !BloonsArchipelago.sessionHandler.ready;
+    }
 }

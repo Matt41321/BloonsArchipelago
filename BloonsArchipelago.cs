@@ -15,7 +15,6 @@ using System.Collections;
 
 using Il2CppAssets.Scripts.Unity.UI_New.InGame;
 using Il2CppAssets.Scripts.Unity;
-using Il2CppAssets.Scripts.Data;
 using Il2CppAssets.Scripts.Simulation.Towers;
 using UnityEngine;
 
@@ -34,6 +33,7 @@ public class BloonsArchipelago : BloonsTD6Mod
 
     private static float mapLoadTime = 0f;
     private static bool mapLoaded = false;
+    private static bool hasSnappedThisSession = false;
     private static bool notificationDelayActive = false;
     private static float lastNotificationTime = 0f;
     private static Queue<string> pendingNotifications = new Queue<string>();
@@ -84,6 +84,38 @@ public class BloonsArchipelago : BloonsTD6Mod
         ModHelper.Msg<BloonsArchipelago>("BloonsArchipelago loaded!");
     }
 
+    public override void OnRoundStart()
+    {
+        if (hasSnappedThisSession) return;
+        hasSnappedThisSession = true;
+
+        try
+        {
+            var sh = sessionHandler;
+            if (sh == null || !sh.ready || !sh.PopTierChecksEnabled) return;
+
+            var inGame = InGame.instance;
+            if (inGame == null) return;
+
+            sh.SessionEndLivePops.Clear();
+            foreach (var tower in inGame.GetTowers())
+            {
+                try
+                {
+                    string baseId = tower?.towerModel?.baseId;
+                    if (string.IsNullOrEmpty(baseId) || baseId == "MonkeyVillage") continue;
+                    bool isBanana = baseId == "BananaFarm";
+                    long pops = isBanana ? (long)tower.cashEarned : tower.damageDealt;
+                    if (!sh.SessionEndLivePops.ContainsKey(baseId))
+                        sh.SessionEndLivePops[baseId] = 0;
+                    sh.SessionEndLivePops[baseId] += pops;
+                }
+                catch { }
+            }
+        }
+        catch { }
+    }
+
     public override void OnTowerSold(Tower tower, float cashGained)
     {
         try
@@ -91,16 +123,34 @@ public class BloonsArchipelago : BloonsTD6Mod
             var sh = sessionHandler;
             if (sh == null || !sh.ready || !sh.PopTierChecksEnabled) return;
             string baseId = tower?.towerModel?.baseId;
-            if (string.IsNullOrEmpty(baseId)) return;
-            if (baseId == "MonkeyVillage") return;
+            if (string.IsNullOrEmpty(baseId) || baseId == "MonkeyVillage") return;
 
-            long value = baseId == "BananaFarm"
-                ? (long)tower.cashEarned
-                : tower.pops;
-            long id = tower.Pointer.ToInt64();
-            sh.TowerInstanceStartPops.TryGetValue(id, out long startPops);
-            long delta = System.Math.Max(0, value - startPops);
-            sh.BankTowerPops(baseId, delta);
+            bool isBanana = baseId == "BananaFarm";
+            long soldPops = isBanana ? (long)tower.cashEarned : tower.damageDealt;
+
+            long liveRemaining = 0;
+            bool soldFound = false;
+            var inGame = InGame.instance;
+            if (inGame != null)
+            {
+                foreach (var t in inGame.GetTowers())
+                {
+                    try
+                    {
+                        if (t?.towerModel?.baseId != baseId) continue;
+                        if (!soldFound && t.Pointer == tower.Pointer) { soldFound = true; continue; }
+                        liveRemaining += isBanana ? (long)t.cashEarned : t.damageDealt;
+                    }
+                    catch { }
+                }
+            }
+
+            sh.CumulativePops.TryGetValue(baseId, out long prevCum);
+            sh.SessionEndLivePops.TryGetValue(baseId, out long prevEnd);
+            long liveTotalIncludingSold = liveRemaining + soldPops;
+            long aggregate = prevCum + System.Math.Max(0, liveTotalIncludingSold - prevEnd);
+            sh.CumulativePops[baseId] = aggregate;
+            sh.SessionEndLivePops[baseId] = liveRemaining;
             sh.SaveProgress();
         }
         catch { }
@@ -111,6 +161,7 @@ public class BloonsArchipelago : BloonsTD6Mod
         if (InGame.instance == null)
         {
             mapLoaded = false;
+            hasSnappedThisSession = false;
             mapLoadTime = 0f;
             notificationDelayActive = false;
             Patches.HomeMenu.MonkeyTierDisplay.UpdateMonkeyTierDisplays();

@@ -25,12 +25,20 @@ namespace BloonsArchipelago.Patches.HomeMenu
                         string towerId = btn.towerId;
                         if (string.IsNullOrEmpty(towerId)) continue;
 
-                        int unlocked = 0;
-                        if (sh.PermanentlyUnlockedTiers.Contains($"{towerId}-Tier3")) unlocked++;
-                        if (sh.PermanentlyUnlockedTiers.Contains($"{towerId}-Tier4")) unlocked++;
-                        if (sh.PermanentlyUnlockedTiers.Contains($"{towerId}-Tier5")) unlocked++;
+                        int score;
+                        if (!sh.MonkeysUnlocked.Contains(towerId))
+                        {
+                            score = 0;
+                        }
+                        else
+                        {
+                            score = 2;
+                            if (sh.PermanentlyUnlockedTiers.Contains($"{towerId}-Tier3")) score++;
+                            if (sh.PermanentlyUnlockedTiers.Contains($"{towerId}-Tier4")) score++;
+                            if (sh.PermanentlyUnlockedTiers.Contains($"{towerId}-Tier5")) score++;
+                        }
 
-                        btn.xpAmount.text = $"Tier {unlocked}/3";
+                        btn.xpAmount.text = $"{score}/5";
                     }
                     catch { }
                 }

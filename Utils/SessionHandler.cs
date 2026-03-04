@@ -105,7 +105,7 @@ namespace BloonsArchipelago.Utils
         public long Tier5PopRequirement = 100000;
         public HashSet<string> PermanentlyUnlockedTiers = new();
         public Dictionary<string, long> CumulativePops = new();
-        public Dictionary<long, long> TowerInstanceStartPops = new();
+        public Dictionary<string, long> SessionEndLivePops = new();
 
         public void BankTowerPops(string baseId, long pops)
         {
@@ -264,6 +264,7 @@ namespace BloonsArchipelago.Utils
                 var data = new PopProgressData
                 {
                     CumulativePops = new Dictionary<string, long>(CumulativePops),
+                    SessionEndLivePops = new Dictionary<string, long>(SessionEndLivePops),
                     PermanentlyUnlockedTiers = new List<string>(PermanentlyUnlockedTiers)
                 };
                 File.WriteAllText(GetProgressSavePath(), JsonSerializer.Serialize(data));
@@ -285,6 +286,8 @@ namespace BloonsArchipelago.Utils
                 if (data == null) return;
                 if (data.CumulativePops != null)
                     CumulativePops = data.CumulativePops;
+                if (data.SessionEndLivePops != null)
+                    SessionEndLivePops = data.SessionEndLivePops;
                 if (data.PermanentlyUnlockedTiers != null)
                     PermanentlyUnlockedTiers = new HashSet<string>(data.PermanentlyUnlockedTiers);
                 MelonLogger.Msg($"[BloonsArchipelago] Loaded pop progress ({CumulativePops.Count} tower(s), {PermanentlyUnlockedTiers.Count} tier(s) unlocked).");

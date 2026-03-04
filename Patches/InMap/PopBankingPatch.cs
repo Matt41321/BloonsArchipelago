@@ -1,6 +1,7 @@
 using HarmonyLib;
 using Il2CppAssets.Scripts.Unity.UI_New.InGame;
 using BTD_Mod_Helper.Extensions;
+using System.Collections.Generic;
 
 namespace BloonsArchipelago.Patches.InMap
 {
@@ -18,25 +19,30 @@ namespace BloonsArchipelago.Patches.InMap
                 var inGame = InGame.instance;
                 if (inGame == null) return;
 
+                var liveTotals = new Dictionary<string, long>();
                 foreach (var tower in inGame.GetTowers())
                 {
                     try
                     {
                         string baseId = tower?.towerModel?.baseId;
-                        if (string.IsNullOrEmpty(baseId)) continue;
-                        if (baseId == "MonkeyVillage") continue;
-
+                        if (string.IsNullOrEmpty(baseId) || baseId == "MonkeyVillage") continue;
                         bool isBanana = baseId == "BananaFarm";
-                        long value = isBanana ? (long)tower.cashEarned : tower.pops;
-                        long id = tower.Pointer.ToInt64();
-                        sh.TowerInstanceStartPops.TryGetValue(id, out long startPops);
-                        long delta = System.Math.Max(0, value - startPops);
-                        sh.BankTowerPops(baseId, delta);
+                        long pops = isBanana ? (long)tower.cashEarned : tower.damageDealt;
+                        if (!liveTotals.ContainsKey(baseId)) liveTotals[baseId] = 0;
+                        liveTotals[baseId] += pops;
                     }
                     catch { }
                 }
 
-                sh.TowerInstanceStartPops.Clear();
+                foreach (var kvp in liveTotals)
+                {
+                    string baseId = kvp.Key;
+                    long liveTotal = kvp.Value;
+                    sh.SessionEndLivePops.TryGetValue(baseId, out long prevEnd);
+                    long gain = System.Math.Max(0, liveTotal - prevEnd);
+                    sh.BankTowerPops(baseId, gain);
+                    sh.SessionEndLivePops[baseId] = liveTotal;
+                }
 
                 sh.SaveProgress();
             }

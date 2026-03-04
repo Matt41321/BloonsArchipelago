@@ -4,6 +4,7 @@ using Il2CppAssets.Scripts.Unity.UI_New.InGame;
 using BTD_Mod_Helper.Extensions;
 using BloonsArchipelago.Utils;
 using UnityEngine;
+using TSM = Il2CppAssets.Scripts.Unity.UI_New.InGame.TowerSelectionMenu.TowerSelectionMenu;
 
 namespace BloonsArchipelago.Patches.InMap
 {
@@ -61,14 +62,16 @@ namespace BloonsArchipelago.Patches.InMap
 
         public static long GetAggregateProgress(string baseId)
         {
-            long total = 0;
+            var sh = BloonsArchipelago.sessionHandler;
+            if (sh == null) return 0;
+
+            sh.CumulativePops.TryGetValue(baseId, out long cumulative);
+            sh.SessionEndLivePops.TryGetValue(baseId, out long sessionEnd);
+
+            long liveTotal = 0;
             bool isBanana = baseId == BANANA;
             try
             {
-                var sh = BloonsArchipelago.sessionHandler;
-                if (sh != null && sh.CumulativePops.ContainsKey(baseId))
-                    total += sh.CumulativePops[baseId];
-
                 var inGame = InGame.instance;
                 if (inGame != null)
                 {
@@ -77,18 +80,15 @@ namespace BloonsArchipelago.Patches.InMap
                         try
                         {
                             if (t?.towerModel?.baseId != baseId) continue;
-                            long pops = isBanana ? (long)t.cashEarned : t.pops;
-                            long id = t.Pointer.ToInt64();
-                            if (!sh.TowerInstanceStartPops.ContainsKey(id))
-                                sh.TowerInstanceStartPops[id] = pops;
-                            total += System.Math.Max(0, pops - sh.TowerInstanceStartPops[id]);
+                            liveTotal += isBanana ? (long)t.cashEarned : t.damageDealt;
                         }
                         catch { }
                     }
                 }
             }
             catch { }
-            return total;
+
+            return cumulative + System.Math.Max(0, liveTotal - sessionEnd);
         }
 
         public static long GetRequired(SessionHandler sh, int tier) =>
@@ -103,6 +103,7 @@ namespace BloonsArchipelago.Patches.InMap
                 var sh = BloonsArchipelago.sessionHandler;
                 if (sh == null || !sh.ready || !sh.PopTierChecksEnabled) return;
 
+                bool needsRefresh = false;
                 var buttons = Object.FindObjectsOfType<UpgradeButton>();
                 foreach (var btn in buttons)
                 {
@@ -131,9 +132,26 @@ namespace BloonsArchipelago.Patches.InMap
 
                         if (total < required && btn.cost != null)
                         {
-                            string unit = baseId == BANANA ? "cash" : "pops";
+                            string unit = baseId == BANANA ? "cash" : "dmg";
                             btn.cost.SetText($"{total:N0} / {required:N0} {unit}");
                         }
+                        else if (total >= required)
+                        {
+                            sh.PermanentlyUnlockedTiers.Add(unlockKey);
+                            if (!sh.LocationChecked(unlockKey))
+                                sh.CompleteCheck(unlockKey);
+                            sh.SaveProgress();
+                            needsRefresh = true;
+                        }
+                    }
+                    catch { }
+                }
+
+                if (needsRefresh)
+                {
+                    try
+                    {
+                        Object.FindObjectOfType<TSM>()?.RefreshUpgrades();
                     }
                     catch { }
                 }

@@ -10,9 +10,10 @@ namespace BloonsArchipelago.Patches.MapMenu
         [HarmonyPrefix]
         private static bool Prefix(MapButton __instance)
         {
-            if (!BloonsArchipelago.sessionHandler.ready) return true;
-
             var sh = BloonsArchipelago.sessionHandler;
+
+            if (!sh.ready && sh.MapsUnlocked.Count == 0) return true;
+            if (!sh.ready && string.IsNullOrEmpty(sh.VictoryMap)) return true;
 
             if (__instance.mapId == sh.VictoryMap && sh.MedalRequirement > sh.Medals)
             {
