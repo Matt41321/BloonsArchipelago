@@ -1,3 +1,3 @@
-# Bloons AP v(0.5.1/0.3.3) (Mod/APWorld)
+# Bloons AP v(0.6.1/0.4.0) (Mod/APWorld)
 
 For setup information please check the Readme
