@@ -32,4 +32,19 @@ namespace BloonsArchipelago.Patches.BTD6Player
             return false;
         }
     }
+
+    [HarmonyPatch(typeof(Btd6Player), nameof(Btd6Player.GetGoldenBloonMapDataForDifficulty))]
+    internal class GetGoldenBloonMapDataSuppression
+    {
+        [HarmonyFinalizer]
+        private static System.Exception Finalizer(System.Exception __exception, ref Il2CppSystem.Object __result)
+        {
+            if (__exception != null)
+            {
+                __result = null;
+                return null; // Suppress the exception
+            }
+            return null; // Return null to not override any unhandled exceptions
+        }
+    }
 }

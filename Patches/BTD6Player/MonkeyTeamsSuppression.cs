@@ -35,4 +35,19 @@ namespace BloonsArchipelago.Patches.BTD6Player
         [HarmonyPrefix]
         private static bool Prefix() => !BloonsArchipelago.sessionHandler.ready;
     }
+
+    [HarmonyPatch(typeof(Btd6Player), nameof(Btd6Player.GetMonkeyTeamsMapDataForDifficulty))]
+    internal class GetMonkeyTeamsMapDataSuppression
+    {
+        [HarmonyFinalizer]
+        private static System.Exception Finalizer(System.Exception __exception, ref Il2CppSystem.Object __result)
+        {
+            if (__exception != null)
+            {
+                __result = null;
+                return null; // Suppress the exception
+            }
+            return null; // Return null to not override any unhandled exceptions
+        }
+    }
 }
