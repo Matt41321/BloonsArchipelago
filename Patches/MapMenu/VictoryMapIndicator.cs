@@ -67,4 +67,17 @@ namespace BloonsArchipelago.Patches.MapMenu
             BloonsArchipelago.vMapIndicators.Clear();
         }
     }
+
+    // difficulty tab switches call UpdateMaps directly, bypassing NextPage/PrevPage
+    [HarmonyPatch(typeof(MapSelectTransition), nameof(MapSelectTransition.UpdateMaps))]
+    internal class ClearIndicatorOnUpdateMaps
+    {
+        [HarmonyPrefix]
+        private static void Prefix()
+        {
+            foreach (GameObject indicator in BloonsArchipelago.vMapIndicators)
+                indicator.Destroy();
+            BloonsArchipelago.vMapIndicators.Clear();
+        }
+    }
 }

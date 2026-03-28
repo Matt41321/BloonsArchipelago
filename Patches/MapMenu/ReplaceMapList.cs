@@ -21,9 +21,9 @@ namespace BloonsArchipelago.Patches.MapMenu
                 SessionHandler.defaultMapList = allMaps;
                 SessionHandler.RebuildValidMapIds();
             }
-            else if (allMaps != null && allMaps.Length > SessionHandler.defaultMapList.Length)
+            else if (allMaps != null && allMaps.Length >= SessionHandler.defaultMapList.Length)
             {
-                MelonLogger.Msg($"[BloonsArchipelago] GameData map count ({allMaps.Length}) exceeds snapshot ({SessionHandler.defaultMapList.Length}) — BTD6 update added maps. Re-capturing.");
+                MelonLogger.Msg($"[BloonsArchipelago] Refreshing map snapshot from GameData ({allMaps.Length} maps, was {SessionHandler.defaultMapList.Length}).");
                 SessionHandler.defaultMapList = allMaps;
                 SessionHandler.RebuildValidMapIds();
             }

@@ -45,9 +45,9 @@ namespace BloonsArchipelago.Patches.BTD6Player
             if (__exception != null)
             {
                 __result = null;
-                return null; // Suppress the exception
+                return null;
             }
-            return null; // Return null to not override any unhandled exceptions
+            return null;
         }
     }
 }

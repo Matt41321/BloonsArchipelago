@@ -87,6 +87,7 @@ namespace BloonsArchipelago.Utils
         }
 
         public static MapDetails[] defaultMapList;
+        private static int _defaultMapCount = 0;
 
         private static HashSet<string> _validMapIds;
 
@@ -95,9 +96,30 @@ namespace BloonsArchipelago.Utils
         public long MedalRequirement = 0;
         public long Difficulty = 0;
         public int Medals = 0;
+        // 0 = default, 1 = normal boss, 2 = elite boss
+        public int GoalType = 0;
+        public bool BossGoal => GoalType >= 1;
 
         public string currentMap = "";
         public string currentMode = "";
+
+        public int RoundSanityInterval = 0;
+
+        public bool ProgressivePricesEnabled = false;
+        public int ProgressivePricesCount = 0;
+
+        public bool CategoryLockEnabled = false;
+
+        public int ModifiedBloonsRoundsRemaining = 0;
+        public int SpeedUpRoundsRemaining = 0;
+
+        private static readonly Dictionary<string, string[]> CategoryTowers = new()
+        {
+            { "Primary Monkeys", new[] { "DartMonkey", "BoomerangMonkey", "BombShooter", "TackShooter", "IceMonkey", "GlueGunner", "Desperado" } },
+            { "Military Monkeys", new[] { "SniperMonkey", "MonkeySub", "MonkeyBuccaneer", "MonkeyAce", "HeliPilot", "MortarMonkey", "DartlingGunner" } },
+            { "Magic Monkeys", new[] { "WizardMonkey", "SuperMonkey", "NinjaMonkey", "Alchemist", "Druid", "Mermonkey" } },
+            { "Support Monkeys", new[] { "BananaFarm", "SpikeFactory", "MonkeyVillage", "EngineerMonkey", "BeastHandler" } },
+        };
 
         public bool PopTierChecksEnabled = false;
         public long Tier3PopRequirement = 5000;
@@ -117,13 +139,27 @@ namespace BloonsArchipelago.Utils
 
         public SessionHandler() { }
 
+        public static void RefreshDefaultMapList()
+        {
+            try
+            {
+                var currentItems = GameData._instance?.mapSet?.Maps?.items;
+                if (currentItems == null || currentItems.Length == 0) return;
+
+                // recapture when the game restores its full list, or on first run
+                if (_defaultMapCount == 0 || currentItems.Length >= _defaultMapCount)
+                {
+                    defaultMapList = currentItems;
+                    _defaultMapCount = currentItems.Length;
+                    RebuildValidMapIds();
+                }
+            }
+            catch { }
+        }
+
         public SessionHandler(string url, int port, string slot, string password)
         {
-            if (defaultMapList == null)
-            {
-                defaultMapList = GameData._instance.mapSet.Maps.items;
-                RebuildValidMapIds();
-            }
+            RefreshDefaultMapList();
 
             session = ArchipelagoSessionFactory.CreateSession(url, port);
 
@@ -194,6 +230,79 @@ namespace BloonsArchipelago.Utils
                         {
                             HeroesUnlocked.Add(itemName.Replace("-HUnlock", ""));
                         }
+                        else if (itemName == "Progressive Prices")
+                        {
+                            ProgressivePricesCount++;
+                        }
+                        else if (CategoryTowers.ContainsKey(itemName))
+                        {
+                            foreach (var tower in CategoryTowers[itemName])
+                                if (!MonkeysUnlocked.Contains(tower))
+                                    MonkeysUnlocked.Add(tower);
+                        }
+                        else if (itemName == "Modified Bloons")
+                        {
+                            // only apply when actually in a game — ignores replayed history on reconnect
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                ModifiedBloonsRoundsRemaining += 3;
+                            }
+                        }
+                        else if (itemName == "Freeze Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                // queue for main thread — callback runs on a background thread
+                                Patches.InMap.FreezeTrapManager.PendingFreezeCount++;
+                            }
+                        }
+                        else if (itemName == "Speed Up Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                MelonLoader.MelonLogger.Msg("[SpeedUp] Queued PendingSpeedUpCount++");
+                                Patches.InMap.SpeedUpTrapManager.PendingSpeedUpCount++;
+                            }
+                            else
+                            {
+                                MelonLoader.MelonLogger.Msg("[SpeedUp] Skipped — InGame.instance is null");
+                            }
+                        }
+                        else if (itemName == "Bee Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.BeeTrapManager.PendingBeeCount++;
+                            }
+                        }
+                        else if (itemName == "Literature Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.LiteratureTrapManager.PendingLiteratureCount++;
+                            }
+                        }
+                        else if (itemName == "Monkey Boost")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.MonkeyBoostManager.PendingBoostCount++;
+                            }
+                        }
+                        else if (itemName == "Monkey Storm")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.MonkeyStormManager.PendingStormCount++;
+                            }
+                        }
+                        else if (itemName == "Cash Drop")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.CashDropManager.PendingCashDropCount++;
+                            }
+                        }
                         else if (itemName == "Medal")
                         {
                             Medals++;
@@ -227,8 +336,20 @@ namespace BloonsArchipelago.Utils
             MedalRequirement = (Int64)slotData["medalsNeeded"];
             Difficulty = (Int64)slotData["difficulty"];
 
+            if (slotData.ContainsKey("goal"))
+                GoalType = (int)(Int64)slotData["goal"];
+
             if (slotData.ContainsKey("progressiveKnowledge"))
                 ProgressiveKnowledgeMode = (bool)slotData["progressiveKnowledge"];
+
+            if (slotData.ContainsKey("roundSanity"))
+                RoundSanityInterval = (int)(Int64)slotData["roundSanity"];
+
+            if (slotData.ContainsKey("progressivePrices"))
+                ProgressivePricesEnabled = (bool)slotData["progressivePrices"];
+
+            if (slotData.ContainsKey("categoryLock"))
+                CategoryLockEnabled = (bool)slotData["categoryLock"];
 
             if (slotData.ContainsKey("popTierChecks") && (bool)slotData["popTierChecks"])
             {
@@ -329,6 +450,7 @@ namespace BloonsArchipelago.Utils
             HeroesUnlocked.Clear();
             Medals = 0;
             ProgressiveKnowledgeCount = 0;
+            ProgressivePricesCount = 0;
 
             foreach (var item in session.Items.AllItemsReceived)
             {
@@ -341,6 +463,14 @@ namespace BloonsArchipelago.Utils
                     MonkeysUnlocked.Add(itemName.Replace("-TUnlock", ""));
                 else if (itemName == "Progressive Knowledge")
                     ProgressiveKnowledgeCount++;
+                else if (itemName == "Progressive Prices")
+                    ProgressivePricesCount++;
+                else if (CategoryTowers.ContainsKey(itemName))
+                {
+                    foreach (var tower in CategoryTowers[itemName])
+                        if (!MonkeysUnlocked.Contains(tower))
+                            MonkeysUnlocked.Add(tower);
+                }
                 else if (itemName.Contains("-KUnlock"))
                     KnowledgeUnlocked.Add(itemName.Replace("-KUnlock", ""));
                 else if (itemName.Contains("-HUnlock"))
@@ -352,6 +482,7 @@ namespace BloonsArchipelago.Utils
             if (ProgressiveKnowledgeCount > 0)
                 RefreshKnowledgeUnlocked();
 
+            RefreshDefaultMapList();
             GameData._instance.mapSet.Maps.items = GetMapDetails();
         }
 
@@ -387,19 +518,26 @@ namespace BloonsArchipelago.Utils
             List<MapDetails> mapDetails = new();
             foreach (var map in defaultMapList)
             {
-                if (map?.id == null) continue;
-
-                if (!_validMapIds.Contains(map.id))
+                try
                 {
-                    MelonLogger.Warning($"[BloonsArchipelago] Skipping map '{map.id}' — not found in current GameData (renamed or removed in a BTD6 update?).");
-                    continue;
+                    if (map == null) continue;
+                    string mapId = map.id;
+                    if (string.IsNullOrEmpty(mapId)) continue;
+
+                    if (!_validMapIds.Contains(mapId))
+                        continue;
+
+                    if (MapsUnlocked.Contains(mapId) || mapId == VictoryMap)
+                    {
+                        if (mapId != VictoryMap)
+                            CompleteCheck(mapId + "-Unlock");
+                        mapDetails.Add(map);
+                    }
                 }
-
-                if (MapsUnlocked.Contains(map.id) || map.id == VictoryMap)
+                catch
                 {
-                    if (map.id != VictoryMap)
-                        CompleteCheck(map.id + "-Unlock");
-                    mapDetails.Add(map);
+                    // stale Il2Cpp reference
+                    continue;
                 }
             }
             return mapDetails.ToArray();

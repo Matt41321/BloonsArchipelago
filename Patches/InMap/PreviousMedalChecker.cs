@@ -35,6 +35,17 @@ namespace BloonsArchipelago.Patches.InMap
                 {
                     BloonsArchipelago.sessionHandler.CompleteCheck(BloonsArchipelago.sessionHandler.currentMap + "-Impoppable");
                 }
+
+                int interval = BloonsArchipelago.sessionHandler.RoundSanityInterval;
+                if (interval > 0)
+                {
+                    int round = completedRound + 1; // 0-indexed
+                    if (round <= 100 && round % interval == 0)
+                    {
+                        BloonsArchipelago.sessionHandler.CompleteCheck($"{BloonsArchipelago.sessionHandler.currentMap}-Round {round}");
+                        ModHelper.Msg<BloonsArchipelago>($"Round Sanity check: {BloonsArchipelago.sessionHandler.currentMap}-Round {round}");
+                    }
+                }
             }
         }
     }
