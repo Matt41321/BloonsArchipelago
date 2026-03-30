@@ -7,12 +7,14 @@ namespace BloonsArchipelago.Patches.BTD6Player
     internal class XPPassthroughPatch
     {
         [HarmonyPrefix]
-        private static void Prefix(float amount)
-        {
-            if (BloonsArchipelago.sessionHandler.ready)
+            private static bool Prefix(float amount)
             {
+                if (BloonsArchipelago.sessionHandler.ready)
+                {
                 BloonsArchipelago.sessionHandler.XPTracker.PassXP(amount);
+                return false; // suppress vanilla XP gain to prevent level-ups during AP runs
+                }
+                return true;
             }
-        }
     }
 }
