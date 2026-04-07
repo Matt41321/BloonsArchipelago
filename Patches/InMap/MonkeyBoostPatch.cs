@@ -15,9 +15,9 @@ namespace BloonsArchipelago.Patches.InMap
 {
     internal static class MonkeyBoostManager
     {
-        private const float FRAME_DURATION = 0.05f; // 20 FPS
+        private const float FRAME_DURATION = 0.05f;
         private const float BOOST_DURATION = 10f;
-        private const float OVERLAY_SIZE_FRACTION = 0.1f; // 10% of screen height
+        private const float OVERLAY_SIZE_FRACTION = 0.1f; 
 
         private static float _boostEndTime = 0f;
         private static bool _boostActive = false;
@@ -93,6 +93,9 @@ namespace BloonsArchipelago.Patches.InMap
 
         public static void Update()
         {
+
+            GetFrames();
+
             while (PendingBoostCount > 0)
             {
                 PendingBoostCount--;
@@ -165,9 +168,40 @@ namespace BloonsArchipelago.Patches.InMap
             }
         }
 
+
+        private static bool IsNecromancerOrPrinceOfDarkness(Tower tower)
+        {
+            try
+            {
+                var model = tower?.towerModel;
+                if (model == null) return false;
+                if (model.baseId != "WizardMonkey") return false;
+
+                string name = model.name ?? "";
+                if (name.Length >= 3)
+                {
+                    char botPathChar = name[name.Length - 1];
+                    if (botPathChar >= '4' && botPathChar <= '9') return true;
+                    if (botPathChar >= '0' && botPathChar <= '3') return false;
+                }
+
+                try
+                {
+                    var tiers = model.tiers;
+                    return tiers != null && tiers.Length > 2 && tiers[2] >= 4;
+                }
+                catch
+                {
+                    return true;
+                }
+            }
+            catch { return false; }
+        }
+
         public static void BoostSingleTower(Tower tower)
         {
             if (tower == null) return;
+            if (IsNecromancerOrPrinceOfDarkness(tower)) return;
             int id = tower.Id.GetHashCode();
             if (_boostedTowers.Contains(id)) return;
             _boostedTowers.Add(id);
@@ -243,12 +277,16 @@ namespace BloonsArchipelago.Patches.InMap
             _frameIndex = 0;
             _frameTimer = 0f;
 
+            MonkeyBoostWeaponPatch.ClearWeaponBoostCache();
+
             if (_canvasGo != null)
             {
                 UnityEngine.Object.Destroy(_canvasGo);
                 _canvasGo = null;
             }
         }
+
+        public static bool IsTowerBoosted(int id) => _boostedTowers.Contains(id);
 
         public static void CleanupAll()
         {
@@ -259,11 +297,88 @@ namespace BloonsArchipelago.Patches.InMap
         }
     }
 
-    // halve weaponModel.rate before each Weapon.Process call, then restore it
+
     [HarmonyPatch(typeof(Weapon), nameof(Weapon.Process))]
     internal static class MonkeyBoostWeaponPatch
     {
         private static readonly Dictionary<IntPtr, float> _savedRates = new();
+
+
+        private static readonly Dictionary<IntPtr, bool> _zombieCache = new();
+
+        private static readonly Dictionary<IntPtr, bool> _weaponShouldBoostCache = new();
+
+        public static void ClearWeaponBoostCache() => _weaponShouldBoostCache.Clear();
+
+        private static bool ShouldBoostWeapon(Weapon weapon)
+        {
+            var ptr = weapon.Pointer;
+            if (_weaponShouldBoostCache.TryGetValue(ptr, out bool cached)) return cached;
+            bool result = ComputeShouldBoostWeapon(weapon);
+            _weaponShouldBoostCache[ptr] = result;
+            return result;
+        }
+
+        private static bool ComputeShouldBoostWeapon(Weapon weapon)
+        {
+            try
+            {
+                var tower = weapon.attack?.tower;
+                if (tower == null) return false;
+                return MonkeyBoostManager.IsTowerBoosted(tower.Id.GetHashCode());
+            }
+            catch { return false; }
+        }
+
+
+        private static bool IsZombieRaisingWeapon(Weapon weapon)
+        {
+            var ptr = weapon.Pointer;
+            if (_zombieCache.TryGetValue(ptr, out bool cached)) return cached;
+            bool result = ComputeIsZombieRaisingWeapon(weapon);
+            _zombieCache[ptr] = result;
+            return result;
+        }
+
+        private static bool ComputeIsZombieRaisingWeapon(Weapon weapon)
+        {
+            try
+            {
+                var weaponName = weapon.weaponModel?.name ?? "";
+                var attackName = weapon.attack?.attackModel?.name ?? "";
+                string combined = weaponName + "|" + attackName;
+
+                if (combined.IndexOf("zombie", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    combined.IndexOf("necro", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    combined.IndexOf("undead", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    combined.IndexOf("raiseDead", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    combined.IndexOf("graveyard", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+
+
+                var model = weapon.attack?.tower?.towerModel;
+                if (model == null || model.baseId != "WizardMonkey") return false;
+
+                string towerName = model.name ?? "";
+                if (towerName.Length >= 3)
+                {
+                    char botPathChar = towerName[towerName.Length - 1];
+                    if (botPathChar >= '4' && botPathChar <= '9') return true;
+                    if (botPathChar >= '0' && botPathChar <= '3') return false;
+                }
+
+                try
+                {
+                    var tiers = model.tiers;
+                    return tiers != null && tiers.Length > 2 && tiers[2] >= 4;
+                }
+                catch
+                {
+                    return true;
+                }
+            }
+            catch { return false; }
+        }
 
         [HarmonyPrefix]
         private static void Prefix(Weapon __instance)
@@ -271,10 +386,16 @@ namespace BloonsArchipelago.Patches.InMap
             if (!MonkeyBoostManager.IsBoostActive) return;
             try
             {
+                if (IsZombieRaisingWeapon(__instance)) return;
+
+
+                if (!ShouldBoostWeapon(__instance)) return;
+
                 var model = __instance.weaponModel;
                 if (model == null) return;
-                _savedRates[__instance.Pointer] = model.rate;
-                model.rate = model.rate / 1.5f;
+
+                if (_savedRates.TryAdd(__instance.Pointer, model.rate))
+                    model.rate = model.rate / 2.0f;
             }
             catch { }
         }
@@ -296,21 +417,4 @@ namespace BloonsArchipelago.Patches.InMap
         }
     }
 
-    [HarmonyPatch(typeof(Tower), nameof(Tower.Initialise))]
-    internal static class MonkeyBoostNewTowerPatch
-    {
-        [HarmonyPostfix]
-        private static void Postfix(Tower __instance)
-        {
-            try
-            {
-                if (!MonkeyBoostManager.IsBoostActive) return;
-                MonkeyBoostManager.BoostSingleTower(__instance);
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Warning($"[MonkeyBoost] Error boosting newly placed tower: {ex.Message}");
-            }
-        }
-    }
 }

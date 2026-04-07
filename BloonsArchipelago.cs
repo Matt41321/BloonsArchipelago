@@ -35,12 +35,9 @@ public class BloonsArchipelago : BloonsTD6Mod
     public static List<GameObject> vMapIndicators = new();
     public static GameModel currentGameModel = null;
 
-    private static float mapLoadTime = 0f;
-    private static bool mapLoaded = false;
     private static bool hasSnappedThisSession = false;
-    private static bool notificationDelayActive = false;
     private static float lastNotificationTime = 0f;
-    private static Queue<string> pendingNotifications = new Queue<string>();
+    private static Queue<APNotification> pendingNotifications = new Queue<APNotification>();
 
     static readonly ModSettingString url = "archipelago.gg";
     static readonly ModSettingInt port = 25565;
@@ -51,6 +48,17 @@ public class BloonsArchipelago : BloonsTD6Mod
         ModHelper.Msg<BloonsArchipelago>("Connecting...");
 
         sessionHandler = new SessionHandler(url, port, slot, password);
+    });
+    static readonly ModSettingButton archipelagoDisconnect = new(() =>
+    {
+        if (!sessionHandler.ready)
+        {
+            ModHelper.Msg<BloonsArchipelago>("Not connected.");
+            return;
+        }
+        sessionHandler.Disconnect();
+        sessionHandler = new SessionHandler();
+        ModHelper.Msg<BloonsArchipelago>("Disconnected.");
     });
     static readonly ModSettingButton refreshData = new(() =>
     {
@@ -164,28 +172,34 @@ public class BloonsArchipelago : BloonsTD6Mod
     {
         switch (mode)
         {
+            // Easy tier (0.85x)
             case "Easy":
             case "PrimaryOnly":
             case "Deflation":
                 return 0.85f;
+            // Medium tier (1.0x)
             case "Medium":
             case "Standard":
             case "MilitaryOnly":
             case "Apopalypse":
             case "Reverse":
                 return 1.00f;
+            // Hard tier (1.08x)
             case "Hard":
             case "MagicOnly":
             case "DoubleMoabHealth":
             case "HalfCash":
             case "AlternateBloonsRounds":
                 return 1.08f;
-            case "Clicks": // CHIMPS uses Hard pricing
+            // CHIMPS (1.08x — Hard pricing)
+            case "Clicks":
                 return 1.08f;
+            // Impoppable tier (1.20x)
             case "Impoppable":
                 return 1.20f;
         }
 
+        // Fall back to difficulty name
         return difficulty switch
         {
             "Easy" => 0.85f,
@@ -197,10 +211,11 @@ public class BloonsArchipelago : BloonsTD6Mod
 
     private static float DetectCurrentMultiplier(GameModel gameModel, string mode)
     {
+
         if (mode != "Standard")
             return GetDifficultyMultiplier("", mode);
 
-        // infer difficulty from Dart Monkey cost: Easy≈170, Medium≈200, Hard≈216, Impoppable≈240
+
         foreach (var tower in gameModel.towers)
         {
             if (tower.name == "DartMonkey")
@@ -248,14 +263,48 @@ public class BloonsArchipelago : BloonsTD6Mod
         ModHelper.Msg<BloonsArchipelago>($"Progressive Prices: applied ratio {ratio:F3} (target {target:F2}x / detected {current:F2}x)");
     }
 
+    private static bool _xpTableDumped = false;
+
+
+    private static void TryDumpXPTable()
+    {
+        if (_xpTableDumped) return;
+        var rankInfo = Il2CppAssets.Scripts.Data.GameData._instance?.rankInfo;
+        if (rankInfo == null) return;
+        _xpTableDumped = true;
+        try
+        {
+            var sb = new System.Text.StringBuilder("{");
+            long cumXP = 0;
+            for (int rank = 1; rank <= 150; rank++)
+            {
+                cumXP += rankInfo.GetXpDiffForRankFromPrev(rank);
+                sb.Append($"\"{rank}\":{cumXP}");
+                if (rank < 150) sb.Append(',');
+            }
+            sb.Append('}');
+            string path = System.IO.Path.Combine(
+                ModContent.GetInstance<BloonsArchipelago>().GetModDirectory(),
+                "btd6_xp_table.json");
+            System.IO.File.WriteAllText(path, sb.ToString());
+            ModHelper.Msg<BloonsArchipelago>($"XP table written to {path}");
+        }
+        catch (System.Exception ex)
+        {
+            MelonLogger.Warning($"[BloonsArchipelago] XP table dump failed: {ex.Message}");
+        }
+    }
+
     public override void OnUpdate()
     {
+        TryDumpXPTable();
+
+        ProcessNotifications();
+        Patches.InMap.APNotificationPanel.Update();
+
         if (InGame.instance == null)
         {
-            mapLoaded = false;
             hasSnappedThisSession = false;
-            mapLoadTime = 0f;
-            notificationDelayActive = false;
 
             if (Patches.InMap.FreezeTrapManager.IsActive)
             {
@@ -287,6 +336,7 @@ public class BloonsArchipelago : BloonsTD6Mod
             return;
         }
 
+
         Patches.InMap.FreezeTrapManager.Update();
         Patches.InMap.BeeTrapManager.Update();
         Patches.InMap.SpeedUpTrapManager.Update();
@@ -298,45 +348,22 @@ public class BloonsArchipelago : BloonsTD6Mod
             Patches.InMap.VictoryMapBossStartingCashPatch.TryGiveCash();
 
         Patches.InMap.PopTierLockPatch.UpdateButtonDisplays();
+    }
 
-        if (!mapLoaded)
+    private static void ProcessNotifications()
+    {
+
+        while (sessionHandler.notifications.TryDequeue(out var notif))
+            pendingNotifications.Enqueue(notif);
+
+
+        float now = Time.unscaledTime;
+        if (pendingNotifications.Count > 0 && now - lastNotificationTime >= 1f)
         {
-            mapLoaded = true;
-            mapLoadTime = Time.time;
-            notificationDelayActive = true;
-        }
-
-        for (int i = sessionHandler.notifications.Count - 1; i >= 0; i--)
-        {
-            string notification = sessionHandler.notifications[i];
-            if (!sessionHandler.previousNotifications.Contains(notification))
-            {
-                pendingNotifications.Enqueue(notification);
-                sessionHandler.notifications.RemoveAt(i);
-                sessionHandler.previousNotifications.Add(notification);
-            }
-            else
-            {
-                sessionHandler.notifications.RemoveAt(i);
-            }
-        }
-
-        if (notificationDelayActive && pendingNotifications.Count > 0)
-        {
-            float currentTime = Time.time;
-
-            if (currentTime - mapLoadTime >= 1f)
-            {
-                if (currentTime - lastNotificationTime >= 1f)
-                {
-                    string notification = pendingNotifications.Dequeue();
-                    if (showNotifications)
-                    {
-                        Game.instance.ShowMessage(notification, 5f, "Archipelago");
-                    }
-                    lastNotificationTime = currentTime;
-                }
-            }
+            var notif = pendingNotifications.Dequeue();
+            if (showNotifications)
+                Patches.InMap.APNotificationPanel.Show(notif);
+            lastNotificationTime = now;
         }
     }
 }

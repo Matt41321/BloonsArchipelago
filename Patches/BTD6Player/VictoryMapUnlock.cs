@@ -9,7 +9,7 @@ namespace BloonsArchipelago.Patches.BTD6Player
         [HarmonyPrefix]
         private static bool Prefix(string map)
         {
-            if (map == BloonsArchipelago.sessionHandler.VictoryMap) return false;
+            if (BloonsArchipelago.sessionHandler.ready && map == BloonsArchipelago.sessionHandler.VictoryMap) return false;
             return true;
         }
     }

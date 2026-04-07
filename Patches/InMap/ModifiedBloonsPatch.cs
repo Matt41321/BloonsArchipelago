@@ -99,7 +99,6 @@ namespace BloonsArchipelago.Patches.InMap
                         continue;
                     }
 
-                    // split group so each bloon can be randomized independently
                     float start = group.start;
                     float end = group.end;
                     float interval = count > 1 ? (end - start) / (count - 1) : 0;

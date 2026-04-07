@@ -7,6 +7,7 @@ using UnityEngine.UI;
 
 namespace BloonsArchipelago.Patches.InMap
 {
+
     internal static class BeeTrapManager
     {
         private static readonly List<BeeFlight> _bees = new();
@@ -92,7 +93,7 @@ namespace BloonsArchipelago.Patches.InMap
 
                 float w = Screen.width;
                 float h = Screen.height;
-                float beeSize = h * 0.105f;
+                float beeSize = h * 0.105f; 
 
                 float randomY = UnityEngine.Random.Range(-h * 0.45f, h * 0.45f);
 
@@ -110,9 +111,10 @@ namespace BloonsArchipelago.Patches.InMap
                 var img = beeGo.AddComponent<Image>();
                 img.sprite = sprite;
                 img.preserveAspect = true;
+
                 rt.localScale = new Vector3(leftToRight ? 1f : -1f, 1f, 1f);
 
-                float speed = UnityEngine.Random.Range(w * 0.28f, w * 0.49f); // pixels/sec (30% slower)
+                float speed = UnityEngine.Random.Range(w * 0.28f, w * 0.49f); 
                 float bobFreq = UnityEngine.Random.Range(4f, 8f);
                 float bobAmp  = UnityEngine.Random.Range(h * 0.01f, h * 0.025f);
 

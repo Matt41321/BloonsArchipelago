@@ -11,6 +11,8 @@ namespace BloonsArchipelago.Patches.InMap
     {
         public static volatile int PendingStormCount = 0;
 
+        private static PowerModel _cachedModel = null;
+
         public static void Update()
         {
             while (PendingStormCount > 0)
@@ -27,28 +29,29 @@ namespace BloonsArchipelago.Patches.InMap
 
             try
             {
-                PowerModel stormModel = null;
-                var powers = Game.instance.model.powers;
-                if (powers != null)
+                if (_cachedModel == null)
                 {
-                    foreach (var p in powers)
+                    var powers = Game.instance.model.powers;
+                    if (powers != null)
                     {
-                        if (p == null) continue;
-                        if (p.name != null && p.name.Contains("SuperMonkeyStorm"))
+                        foreach (var p in powers)
                         {
-                            stormModel = p;
-                            break;
+                            if (p?.name != null && p.name.Contains("SuperMonkeyStorm"))
+                            {
+                                _cachedModel = p;
+                                break;
+                            }
                         }
                     }
                 }
 
-                if (stormModel == null)
+                if (_cachedModel == null)
                 {
                     MelonLogger.Warning("[MonkeyStorm] SuperMonkeyStorm power model not found in game.model.powers");
                     return;
                 }
 
-                inGame.bridge.ActivatePower(new Vector2(0f, 0f), stormModel);
+                inGame.bridge.ActivatePower(new Vector2(0f, 0f), _cachedModel);
                 MelonLogger.Msg("[MonkeyStorm] Activated SuperMonkeyStorm via bridge.ActivatePower");
             }
             catch (Exception ex)
@@ -60,6 +63,7 @@ namespace BloonsArchipelago.Patches.InMap
         public static void CleanupAll()
         {
             PendingStormCount = 0;
+            _cachedModel = null;
         }
     }
 }

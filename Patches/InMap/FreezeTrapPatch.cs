@@ -12,6 +12,7 @@ using UnityEngine;
 
 namespace BloonsArchipelago.Patches.InMap
 {
+    // Block weapon firing for frozen towers
     [HarmonyPatch(typeof(Weapon), nameof(Weapon.Process))]
     internal class WeaponProcessFreezePatch
     {
@@ -29,23 +30,6 @@ namespace BloonsArchipelago.Patches.InMap
         }
     }
 
-    [HarmonyPatch(typeof(Tower), nameof(Tower.Initialise))]
-    internal class FreezeTrapNewTowerPatch
-    {
-        [HarmonyPostfix]
-        private static void Postfix(Tower __instance)
-        {
-            try
-            {
-                if (!FreezeTrapManager.IsActive) return;
-                FreezeTrapManager.FreezeSingleTower(__instance);
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Warning($"[BloonsArchipelago] Error freezing newly placed tower: {ex.Message}");
-            }
-        }
-    }
 
     internal static class FreezeTrapManager
     {
@@ -140,7 +124,7 @@ namespace BloonsArchipelago.Patches.InMap
         {
             if (tower == null) return;
 
-            // Ice Monkey and Silas are immune
+            // Ice Monkey and Silas are immune to the freeze trap
             if (tower.towerModel?.baseId == "IceMonkey") return;
             if (tower.towerModel?.baseId == "Silas") return;
 
@@ -149,6 +133,7 @@ namespace BloonsArchipelago.Patches.InMap
 
             _frozenTowers.Add(id);
 
+            // Pause the tower's entity to stop all attack processing
             try
             {
                 tower.entity.isPaused = true;
@@ -201,6 +186,7 @@ namespace BloonsArchipelago.Patches.InMap
                 var cam = Camera.main;
                 if (cam != null)
                 {
+                    // Place the overlay in front of the tower along the camera's view direction, shifted up to center on monkey
                     overlayGo.transform.position = worldPos - cam.transform.forward * 10f + new Vector3(0f, 0.4f, 0f);
                     overlayGo.transform.rotation = cam.transform.rotation;
                 }
@@ -226,6 +212,7 @@ namespace BloonsArchipelago.Patches.InMap
 
         public static void UnfreezeAllTowers()
         {
+            // Unpause all frozen tower entities
             var inGame = InGame.instance;
             if (inGame != null)
             {
@@ -236,7 +223,9 @@ namespace BloonsArchipelago.Patches.InMap
                         if (tower == null) continue;
                         int id = tower.Id.GetHashCode();
                         if (_frozenTowers.Contains(id))
+                        {
                             tower.entity.isPaused = false;
+                        }
                     }
                     catch { }
                 }
@@ -257,7 +246,9 @@ namespace BloonsArchipelago.Patches.InMap
                         if (tower == null) continue;
                         int id = tower.Id.GetHashCode();
                         if (_frozenTowers.Contains(id))
+                        {
                             tower.entity.isPaused = false;
+                        }
                     }
                     catch { }
                 }

@@ -149,7 +149,7 @@ namespace BloonsArchipelago.Patches.InMap
 
         private readonly float _startY;
         private readonly float _endY;
-        private const float DURATION = 85.7f;
+        private const float DURATION = 85.7f; 
 
         public LiteratureScroll(GameObject canvas, string text, TMP_FontAsset font)
         {
@@ -161,12 +161,15 @@ namespace BloonsArchipelago.Patches.InMap
 
             _rt = _go.AddComponent<RectTransform>();
 
+
             _rt.anchorMin = new Vector2(0.5f, 0.5f);
             _rt.anchorMax = new Vector2(0.5f, 0.5f);
-            _rt.pivot     = new Vector2(0.5f, 1f);   // pivot at top of text block
+            _rt.pivot     = new Vector2(0.5f, 1f);   
+
 
             float boxHeight = h * 8f;
             _rt.sizeDelta = new Vector2(w * 0.9f, boxHeight);
+
 
             _startY = -(h * 0.5f);
             _endY   =   h * 0.5f + boxHeight;
@@ -179,7 +182,7 @@ namespace BloonsArchipelago.Patches.InMap
                 tmp.font = font;
                 tmp.text = text;
                 tmp.fontSize = h * 0.0864f;
-                tmp.alignment = (TextAlignmentOptions)258;  // TopCenter
+                tmp.alignment = (TextAlignmentOptions)258;  
                 tmp.color = new Color(1f, 0.92f, 0f, 1f);
                 tmp.outlineWidth = 0.25f;
                 tmp.outlineColor = new Color32(0, 0, 0, 255);

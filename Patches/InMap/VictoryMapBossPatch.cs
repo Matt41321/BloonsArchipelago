@@ -24,7 +24,6 @@ namespace BloonsArchipelago.Patches.InMap
 
         private static readonly BossType[] BossTypes = (BossType[])Enum.GetValues(typeof(BossType));
 
-        // deterministic from seed so the same session always picks the same boss
         public static BossType GetBossForSession(string sessionSeed)
         {
             var rng = new Random(StableHash(sessionSeed));
@@ -45,13 +44,10 @@ namespace BloonsArchipelago.Patches.InMap
         public static bool IsActive =>
             InGameData.CurrentGame != null && InGameData.CurrentGame.gameEventId == EventId;
 
-        // set when player clicks victory map; OnUpdate uses it to auto-select Standard in ModeScreen
         public static bool AutoStartPending = false;
 
-        // set when our boss game launches; cleared on victory or back-out
         public static bool BossGameStarted = false;
 
-        // true only when a boss tier was actually killed; false if player ran out of lives
         public static bool BossActuallyKilled = false;
 
     }
@@ -94,7 +90,6 @@ namespace BloonsArchipelago.Patches.InMap
                 spawnRounds, challengeModel, LeaderboardScoringType.GameTime);
         }
     }
-
     [HarmonyPatch]
     internal static class VictoryMapSkuSettingsPatch
     {
@@ -122,7 +117,6 @@ namespace BloonsArchipelago.Patches.InMap
         }
     }
 
-    // game sometimes shows VictoryScreen instead of BossDefeatScreen; handle that path here
     [HarmonyPatch(typeof(InGame), nameof(InGame.OnVictory))]
     internal static class VictoryMapBossOnVictoryPatch
     {
@@ -142,7 +136,6 @@ namespace BloonsArchipelago.Patches.InMap
         }
     }
 
-    // save progress to map, not boss event leaderboard
     [HarmonyPatch(typeof(InGame), nameof(InGame.MapDataSaveId), MethodType.Getter)]
     internal static class VictoryMapBossMapDataSaveIdPatch
     {
@@ -169,7 +162,6 @@ namespace BloonsArchipelago.Patches.InMap
         }
     }
 
-    // boss events never fire InGame.OnVictory; they go to BossDefeatScreen directly
     [HarmonyPatch(typeof(BossDefeatScreen), nameof(BossDefeatScreen.Open))]
     internal static class VictoryMapBossDefeatScreenPatch
     {
@@ -188,7 +180,7 @@ namespace BloonsArchipelago.Patches.InMap
             }
             else
             {
-                VictoryMapBossManager.BossActuallyKilled = false;
+                VictoryMapBossManager.BossActuallyKilled = false; 
                 MelonLogger.Msg("[VictoryMapBoss] BossDefeatScreen opened but player was defeated — not completing rando.");
             }
 
@@ -215,7 +207,6 @@ namespace BloonsArchipelago.Patches.InMap
         }
     }
 
-    // block InGame.BossDefeated — it NullRefs on our fake event ID; trigger OnVictory manually instead
     [HarmonyPatch]
     internal static class VictoryMapBossInGameBossDefeatedPatch
     {
@@ -261,7 +252,6 @@ namespace BloonsArchipelago.Patches.InMap
         }
     }
 
-    // top up starting cash; called from OnRoundStart since InGame.RoundStart doesn't fire in boss mode
     internal static class VictoryMapBossStartingCashPatch
     {
         private static bool _cashGiven = false;
@@ -301,7 +291,6 @@ namespace BloonsArchipelago.Patches.InMap
         }
     }
 
-    // suppress player stat methods that crash on our fake event ID
     [HarmonyPatch]
     internal static class VictoryMapBossPreventMethodsPatch
     {
@@ -317,7 +306,6 @@ namespace BloonsArchipelago.Patches.InMap
         private static bool Prefix() => !VictoryMapBossManager.IsActive;
     }
 
-    // block ModeScreen on back-out so no intermediate screen is shown
     [HarmonyPatch(typeof(ModeScreen), "Open")]
     internal static class VictoryMapBossModeScreenBackOutPatch
     {
@@ -333,21 +321,18 @@ namespace BloonsArchipelago.Patches.InMap
         }
     }
 
-    // prefix required — must block before ContinueGamePanel.Initialise() looks up our fake event ID
     [HarmonyPatch(typeof(DifficultySelectScreen), nameof(DifficultySelectScreen.Open))]
     internal static class VictoryMapBossDifficultyNavigatePatch
     {
         [HarmonyPrefix]
         private static bool Prefix(DifficultySelectScreen __instance)
         {
-            // back-out: gameEventId on InGameData.Editable is already null by now, which is what
-            // causes ContinueGamePanel.Initialise to crash — block and go home instead
             if (VictoryMapBossManager.BossGameStarted && !VictoryMapBossManager.AutoStartPending)
             {
                 VictoryMapBossManager.BossGameStarted = false;
                 MelonLogger.Msg("[VictoryMapBoss] Back-out detected — going to main menu.");
                 MenuManager.instance?.GoToMainMenu();
-                return false;
+                return false; 
             }
 
             var sh = BloonsArchipelago.sessionHandler;

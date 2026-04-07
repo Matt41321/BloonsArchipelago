@@ -11,6 +11,8 @@ namespace BloonsArchipelago.Patches.InMap
     {
         public static volatile int PendingCashDropCount = 0;
 
+        private static PowerModel _cachedModel = null;
+
         public static void Update()
         {
             while (PendingCashDropCount > 0)
@@ -27,28 +29,29 @@ namespace BloonsArchipelago.Patches.InMap
 
             try
             {
-                PowerModel cashDropModel = null;
-                var powers = Game.instance.model.powers;
-                if (powers != null)
+                if (_cachedModel == null)
                 {
-                    foreach (var p in powers)
+                    var powers = Game.instance.model.powers;
+                    if (powers != null)
                     {
-                        if (p == null) continue;
-                        if (p.name != null && p.name.Contains("CashDrop"))
+                        foreach (var p in powers)
                         {
-                            cashDropModel = p;
-                            break;
+                            if (p?.name != null && p.name.Contains("CashDrop"))
+                            {
+                                _cachedModel = p;
+                                break;
+                            }
                         }
                     }
                 }
 
-                if (cashDropModel == null)
+                if (_cachedModel == null)
                 {
                     MelonLogger.Warning("[CashDrop] CashDrop power model not found in game.model.powers");
                     return;
                 }
 
-                inGame.bridge.ActivatePower(new Vector2(0f, 0f), cashDropModel);
+                inGame.bridge.ActivatePower(new Vector2(0f, 0f), _cachedModel);
                 MelonLogger.Msg("[CashDrop] Activated CashDrop via bridge.ActivatePower");
             }
             catch (Exception ex)
@@ -60,6 +63,7 @@ namespace BloonsArchipelago.Patches.InMap
         public static void CleanupAll()
         {
             PendingCashDropCount = 0;
+            _cachedModel = null;
         }
     }
 }

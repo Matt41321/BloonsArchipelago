@@ -18,32 +18,35 @@ namespace BloonsArchipelago.Patches.InMap
                     BloonsArchipelago.sessionHandler.currentMode = __instance.SelectedDifficulty;
                 }
 
+                string apMap = Utils.SessionHandler.GameIdToApId(BloonsArchipelago.sessionHandler.currentMap);
+
                 if (completedRound == 39 && new[] { "Medium", "Hard", "Impoppable", "Clicks" }.Contains(BloonsArchipelago.sessionHandler.currentMode))
                 {
-                    BloonsArchipelago.sessionHandler.CompleteCheck(BloonsArchipelago.sessionHandler.currentMap + "-Easy");
-                    ModHelper.Msg<BloonsArchipelago>(BloonsArchipelago.sessionHandler.currentMap+"-Easy");
+                    BloonsArchipelago.sessionHandler.CompleteCheck(apMap + "-Easy");
+                    ModHelper.Msg<BloonsArchipelago>(apMap + "-Easy");
                 }
                 else if (completedRound == 59 && new[] { "Hard", "Impoppable", "Clicks" }.Contains(BloonsArchipelago.sessionHandler.currentMode))
                 {
-                    BloonsArchipelago.sessionHandler.CompleteCheck(BloonsArchipelago.sessionHandler.currentMap + "-Medium");
+                    BloonsArchipelago.sessionHandler.CompleteCheck(apMap + "-Medium");
                 }
                 else if (completedRound == 79 && new[] { "Impoppable", "Clicks" }.Contains(BloonsArchipelago.sessionHandler.currentMode))
                 {
-                    BloonsArchipelago.sessionHandler.CompleteCheck(BloonsArchipelago.sessionHandler.currentMap + "-Hard");
+                    BloonsArchipelago.sessionHandler.CompleteCheck(apMap + "-Hard");
                 }
                 else if (completedRound == 99 && BloonsArchipelago.sessionHandler.currentMode == "Clicks")
                 {
-                    BloonsArchipelago.sessionHandler.CompleteCheck(BloonsArchipelago.sessionHandler.currentMap + "-Impoppable");
+                    BloonsArchipelago.sessionHandler.CompleteCheck(apMap + "-Impoppable");
                 }
 
+                // Round Sanity checks
                 int interval = BloonsArchipelago.sessionHandler.RoundSanityInterval;
                 if (interval > 0)
                 {
-                    int round = completedRound + 1; // 0-indexed
+                    int round = completedRound + 1; // completedRound is 0-indexed
                     if (round <= 100 && round % interval == 0)
                     {
-                        BloonsArchipelago.sessionHandler.CompleteCheck($"{BloonsArchipelago.sessionHandler.currentMap}-Round {round}");
-                        ModHelper.Msg<BloonsArchipelago>($"Round Sanity check: {BloonsArchipelago.sessionHandler.currentMap}-Round {round}");
+                        BloonsArchipelago.sessionHandler.CompleteCheck($"{apMap}-Round {round}");
+                        ModHelper.Msg<BloonsArchipelago>($"Round Sanity check: {apMap}-Round {round}");
                     }
                 }
             }

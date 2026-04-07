@@ -12,16 +12,25 @@ namespace BloonsArchipelago.Patches.MapMenu
         [HarmonyPrefix]
         private static void Prefix()
         {
-            if (!BloonsArchipelago.sessionHandler.ready) return;
-
             var allMaps = GameData._instance.mapSet.Maps.items;
-            if (SessionHandler.defaultMapList == null)
+
+            if (SessionHandler.defaultMapList == null && allMaps != null && allMaps.Length > 0)
             {
-                MelonLogger.Warning("[BloonsArchipelago] defaultMapList was null on map screen open — re-capturing from GameData.");
                 SessionHandler.defaultMapList = allMaps;
                 SessionHandler.RebuildValidMapIds();
             }
-            else if (allMaps != null && allMaps.Length >= SessionHandler.defaultMapList.Length)
+
+            if (!BloonsArchipelago.sessionHandler.ready)
+            {
+                if (SessionHandler.defaultMapList != null)
+                {
+                    GameData._instance.mapSet.Maps.items = SessionHandler.defaultMapList;
+                }
+                return;
+            }
+
+            if (allMaps != null && SessionHandler.defaultMapList != null
+                && allMaps.Length > SessionHandler.defaultMapList.Length)
             {
                 MelonLogger.Msg($"[BloonsArchipelago] Refreshing map snapshot from GameData ({allMaps.Length} maps, was {SessionHandler.defaultMapList.Length}).");
                 SessionHandler.defaultMapList = allMaps;

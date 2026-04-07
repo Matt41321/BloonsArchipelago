@@ -8,6 +8,7 @@ using Il2CppAssets.Scripts.Unity.UI_New.Main;
 
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace BloonsArchipelago.Patches.HomeMenu
@@ -23,8 +24,8 @@ namespace BloonsArchipelago.Patches.HomeMenu
                 string modPath = ModContent.GetInstance<BloonsArchipelago>().GetModDirectory();
 
                 Dictionary<string, string[]> notifDict = BloonsArchipelago.notifJson.APWorlds;
-                notifDict.TryAdd(BloonsArchipelago.sessionHandler.APID, BloonsArchipelago.sessionHandler.previousNotifications.ToArray());
-                notifDict[BloonsArchipelago.sessionHandler.APID] = BloonsArchipelago.sessionHandler.previousNotifications.ToArray();
+                notifDict.TryAdd(BloonsArchipelago.sessionHandler.APID, BloonsArchipelago.sessionHandler.previousNotifications.Keys.ToArray());
+                notifDict[BloonsArchipelago.sessionHandler.APID] = BloonsArchipelago.sessionHandler.previousNotifications.Keys.ToArray();
 
                 var notificationJSON = JsonSerializer.Serialize(new NotificationJSON { APWorlds = notifDict });
                 File.WriteAllText(Path.Combine(modPath, "Notifications.json"), notificationJSON);

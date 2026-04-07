@@ -1,4 +1,5 @@
 using HarmonyLib;
+using Il2CppAssets.Scripts.Unity;
 using Il2CppAssets.Scripts.Unity.UI_New.LevelUp;
 
 namespace BloonsArchipelago.Patches.BTD6Player
@@ -9,7 +10,9 @@ namespace BloonsArchipelago.Patches.BTD6Player
         [HarmonyPrefix]
         private static bool Prefix()
         {
-            return !BloonsArchipelago.sessionHandler.ready;
+            if (!BloonsArchipelago.sessionHandler.ready) return true;
+            int playerRank = Game.Player?.Data?.rank?.ValueInt ?? 0;
+            return playerRank >= 21;
         }
     }
 }

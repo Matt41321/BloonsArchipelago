@@ -11,6 +11,7 @@ using GameData = Il2CppAssets.Scripts.Data.GameData;
 using MelonLoader;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -24,8 +25,13 @@ namespace BloonsArchipelago.Utils
 
         public ArchipelagoXP XPTracker;
 
-        public List<string> notifications = new();
-        public List<string> previousNotifications = new();
+
+        public ConcurrentQueue<APNotification> notifications = new();
+
+        public ConcurrentDictionary<string, byte> previousNotifications = new();
+
+
+        private volatile bool _suppressNotifications = true;
 
         public List<string> MapsUnlocked = new();
         public List<string> MonkeysUnlocked = new();
@@ -91,12 +97,37 @@ namespace BloonsArchipelago.Utils
 
         private static HashSet<string> _validMapIds;
 
+
+        private static readonly Dictionary<string, string> _gameIdToApId = new()
+        {
+            { "Tutorial", "MonkeyMeadow" },
+        };
+        private static readonly Dictionary<string, string> _apIdToGameId = new()
+        {
+            { "MonkeyMeadow", "Tutorial" },
+        };
+
+        public static string GameIdToApId(string gameId)
+            => _gameIdToApId.TryGetValue(gameId, out string apId) ? apId : gameId;
+
+        public static string ApIdToGameId(string apId)
+            => _apIdToGameId.TryGetValue(apId, out string gameId) ? gameId : apId;
+
+
+        private static readonly Dictionary<string, string> _gameModeToApMode = new()
+        {
+            { "Clicks", "Chimps" },
+        };
+
+        public static string GameModeToApMode(string mode)
+            => _gameModeToApMode.TryGetValue(mode, out string apMode) ? apMode : mode;
+
         public string APID = "";
         public string VictoryMap = "";
         public long MedalRequirement = 0;
         public long Difficulty = 0;
         public int Medals = 0;
-        // 0 = default, 1 = normal boss, 2 = elite boss
+        /// 0 = default, 1 = normal boss, 2 = elite boss
         public int GoalType = 0;
         public bool BossGoal => GoalType >= 1;
 
@@ -146,7 +177,7 @@ namespace BloonsArchipelago.Utils
                 var currentItems = GameData._instance?.mapSet?.Maps?.items;
                 if (currentItems == null || currentItems.Length == 0) return;
 
-                // recapture when the game restores its full list, or on first run
+
                 if (_defaultMapCount == 0 || currentItems.Length >= _defaultMapCount)
                 {
                     defaultMapList = currentItems;
@@ -206,7 +237,35 @@ namespace BloonsArchipelago.Utils
                     string itemLocation = item.LocationName;
                     ModHelper.Msg<BloonsArchipelago>(itemName + " Received from Server");
 
-                    notifications.Add("You've received " + itemName + " from " + itemPlayer + " at " + itemLocation);
+
+                    bool selfSend = item.Player.Slot == session.ConnectionInfo.Slot;
+                    string from = selfSend
+                        ? "You found it!"
+                        : "from " + itemPlayer;
+                    if (!selfSend)
+                    {
+                        try
+                        {
+                            string senderGame = item.Player.Game;
+                            if (!string.IsNullOrEmpty(senderGame))
+                                from += " (" + senderGame + ")";
+                        }
+                        catch { }
+                    }
+
+
+                    string fullText = "You've received " + itemName + " from " + itemPlayer + " at " + itemLocation;
+                    bool isNew = previousNotifications.TryAdd(fullText, 0);
+                    if (isNew && !_suppressNotifications)
+                    {
+                        notifications.Enqueue(new APNotification
+                        {
+                            Category = GetItemCategory(itemName),
+                            ItemName = GetCleanName(itemName),
+                            From     = from,
+                            FullText = fullText,
+                        });
+                    }
                     if (itemName is not null)
                     {
                         if (itemName.Contains("-MUnlock"))
@@ -242,7 +301,6 @@ namespace BloonsArchipelago.Utils
                         }
                         else if (itemName == "Modified Bloons")
                         {
-                            // only apply when actually in a game — ignores replayed history on reconnect
                             if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
                             {
                                 ModifiedBloonsRoundsRemaining += 3;
@@ -252,7 +310,6 @@ namespace BloonsArchipelago.Utils
                         {
                             if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
                             {
-                                // queue for main thread — callback runs on a background thread
                                 Patches.InMap.FreezeTrapManager.PendingFreezeCount++;
                             }
                         }
@@ -317,10 +374,55 @@ namespace BloonsArchipelago.Utils
                 }
             };
 
+            session.MessageLog.OnMessageReceived += (message) =>
+            {
+                try
+                {
+                    if (message is Archipelago.MultiClient.Net.MessageLog.Messages.ChatLogMessage chat)
+                    {
+                        string chatSender = chat.Player?.Name ?? "?";
+                        string chatText   = chat.Message ?? "";
+                        notifications.Enqueue(new APNotification
+                        {
+                            Category   = "Chat",
+                            ItemName   = chatText,
+                            From       = chatSender,
+                            FullText   = chatSender + ": " + chatText,
+                            IsOutgoing = false,
+                        });
+                        return;
+                    }
+
+                    if (message is not Archipelago.MultiClient.Net.MessageLog.Messages.ItemSendLogMessage send) return;
+                    if (send.Sender.Slot != session.ConnectionInfo.Slot) return;  
+                    if (send.Receiver.Slot == session.ConnectionInfo.Slot) return; 
+
+                    string itemName = send.Item.ItemName;
+                    string receiverName = send.Receiver.Name;
+                    string receiverGame = send.Receiver.Game ?? "";
+                    string toLine = string.IsNullOrEmpty(receiverGame)
+                        ? "to " + receiverName
+                        : "to " + receiverName + " (" + receiverGame + ")";
+
+                    string fullText = "Sent " + itemName + " " + toLine;
+                    notifications.Enqueue(new APNotification
+                    {
+                        Category   = GetItemCategory(itemName),
+                        ItemName   = itemName, 
+                        From       = toLine,
+                        FullText   = fullText,
+                        IsOutgoing = true,
+                        ItemColor  = FlagsToColor(send.Item.Flags),
+                    });
+                }
+                catch { }
+            };
+
             APID = session.RoomState.Seed;
             if (BloonsArchipelago.notifJson.APWorlds.ContainsKey(APID))
             {
-                previousNotifications.AddRange(BloonsArchipelago.notifJson.APWorlds[APID]);
+                foreach (var s in BloonsArchipelago.notifJson.APWorlds[APID])
+                    previousNotifications.TryAdd(s, 0);
             }
 
             if (session.DataStorage["XP-" + PlayerSlotName()])
@@ -332,7 +434,7 @@ namespace BloonsArchipelago.Utils
                 XPTracker = new ArchipelagoXP((Int64)slotData["staticXPReq"], (Int64)slotData["maxLevel"], (bool)slotData["xpCurve"]);
             }
 
-            VictoryMap = (string)slotData["victoryLocation"];
+            VictoryMap = ApIdToGameId((string)slotData["victoryLocation"]);
             MedalRequirement = (Int64)slotData["medalsNeeded"];
             Difficulty = (Int64)slotData["difficulty"];
 
@@ -365,6 +467,8 @@ namespace BloonsArchipelago.Utils
             ModHelper.Msg<BloonsArchipelago>(MedalRequirement + " Medals Required to Unlock " + VictoryMap);
 
             LoadProgress();
+
+            _suppressNotifications = false;
         }
 
         private string GetProgressSavePath()
@@ -527,20 +631,27 @@ namespace BloonsArchipelago.Utils
                     if (!_validMapIds.Contains(mapId))
                         continue;
 
-                    if (MapsUnlocked.Contains(mapId) || mapId == VictoryMap)
+                    string apMapId = GameIdToApId(mapId);
+                    if (MapsUnlocked.Contains(apMapId) || mapId == VictoryMap)
                     {
                         if (mapId != VictoryMap)
-                            CompleteCheck(mapId + "-Unlock");
+                            CompleteCheck(apMapId + "-Unlock");
                         mapDetails.Add(map);
                     }
                 }
                 catch
                 {
-                    // stale Il2Cpp reference
                     continue;
                 }
             }
             return mapDetails.ToArray();
+        }
+
+        public void Disconnect()
+        {
+            if (!ready) return;
+            try { session?.Socket?.DisconnectAsync(); } catch { }
+            ready = false;
         }
 
         public string PlayerSlotName()
@@ -548,6 +659,59 @@ namespace BloonsArchipelago.Utils
             int slot = session.ConnectionInfo.Slot;
             string name = session.Players.GetPlayerName(slot);
             return name;
+        }
+
+        private static string GetItemCategory(string itemName)
+        {
+            if (itemName.Contains("-MUnlock")) return "Map Unlock";
+            if (itemName.Contains("-TUnlock")) return "Tower Unlock";
+            if (itemName.Contains("-HUnlock")) return "Hero";
+            if (itemName.Contains("-KUnlock")) return "Knowledge";
+            if (itemName == "Progressive Knowledge") return "Progression";
+            if (itemName == "Progressive Prices")    return "Progression";
+            if (itemName == "Medal")                 return "Medal";
+            if (CategoryTowers.ContainsKey(itemName)) return "Tower Unlock";
+            if (itemName == "Modified Bloons"  ||
+                itemName == "Freeze Trap"      ||
+                itemName == "Speed Up Trap"    ||
+                itemName == "Bee Trap"         ||
+                itemName == "Literature Trap") return "Trap";
+            if (itemName == "Monkey Boost"  ||
+                itemName == "Monkey Storm"  ||
+                itemName == "Cash Drop")       return "Filler";
+            return "Item";
+        }
+
+        private static string GetCleanName(string itemName)
+        {
+            if (itemName.Contains("-MUnlock")) return SplitPascalCase(itemName.Replace("-MUnlock", ""));
+            if (itemName.Contains("-TUnlock")) return SplitPascalCase(itemName.Replace("-TUnlock", ""));
+            if (itemName.Contains("-HUnlock")) return SplitPascalCase(itemName.Replace("-HUnlock", ""));
+            if (itemName.Contains("-KUnlock")) return SplitPascalCase(itemName.Replace("-KUnlock", ""));
+            return itemName;
+        }
+
+        private static string SplitPascalCase(string s)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < s.Length; i++)
+            {
+                if (i > 0 && char.IsUpper(s[i]) && (char.IsLower(s[i - 1]) || char.IsDigit(s[i - 1])))
+                    sb.Append(' ');
+                sb.Append(s[i]);
+            }
+            return sb.ToString();
+        }
+
+        private static UnityEngine.Color FlagsToColor(Archipelago.MultiClient.Net.Enums.ItemFlags flags)
+        {
+            if (flags.HasFlag(Archipelago.MultiClient.Net.Enums.ItemFlags.Trap))
+                return new UnityEngine.Color(1.00f, 0.27f, 0.27f);   // red       — Trap
+            if (flags.HasFlag(Archipelago.MultiClient.Net.Enums.ItemFlags.Advancement))
+                return new UnityEngine.Color(0.78f, 0.55f, 1.00f);   // purple    — Progression
+            if (flags.HasFlag(Archipelago.MultiClient.Net.Enums.ItemFlags.NeverExclude))
+                return new UnityEngine.Color(0.20f, 0.40f, 0.85f);   // dark blue — Useful
+            return new UnityEngine.Color(0.00f, 0.87f, 1.00f);       // light blue — Filler
         }
     }
 }

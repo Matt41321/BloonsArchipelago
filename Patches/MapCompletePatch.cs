@@ -15,7 +15,9 @@ namespace BloonsArchipelago.Patches
                 BloonsArchipelago.sessionHandler.currentMode = __instance.difficulty.text.Substring(__instance.difficulty.text.IndexOf(":") + 2);
             }
 
-            string checkstring = BloonsArchipelago.sessionHandler.currentMap + "-" + BloonsArchipelago.sessionHandler.currentMode;
+            string apMap = Utils.SessionHandler.GameIdToApId(BloonsArchipelago.sessionHandler.currentMap);
+            string apMode = Utils.SessionHandler.GameModeToApMode(BloonsArchipelago.sessionHandler.currentMode);
+            string checkstring = apMap + "-" + apMode;
             ModHelper.Msg<BloonsArchipelago>("Checked: " + checkstring);
             if (BloonsArchipelago.sessionHandler.ready)
             {
