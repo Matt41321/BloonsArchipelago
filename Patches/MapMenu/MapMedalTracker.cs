@@ -17,14 +17,10 @@ namespace BloonsArchipelago.Patches.MapMenu
         {   
             if (BloonsArchipelago.sessionHandler.ready)
             {
-                string locationName = map + "-";
-                if (mode == "Standard")
-                {
-                    locationName += difficulty;
-                } else
-                {
-                    locationName += mode;
-                }
+                string apMode = mode == "Standard"
+                    ? difficulty
+                    : Utils.SessionHandler.GameModeToApMode(mode);
+                string locationName = Utils.SessionHandler.GameIdToApId(map) + "-" + apMode;
                 if (BloonsArchipelago.sessionHandler.LocationChecked(locationName))
                 {
                     __result = true;

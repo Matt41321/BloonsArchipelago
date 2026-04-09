@@ -20,6 +20,7 @@
 		<Reference Include="$(Il2CppAssemblies)\Il2CppSystem.Core.dll" Private="false"/>
 		<Reference Include="$(Il2CppAssemblies)\Il2CppSystem.dll" Private="false"/>
 		<Reference Include="$(Il2CppAssemblies)\Il2CppNinjaKiwi.Common.dll" Private="false"/>
+		<Reference Include="$(Il2CppAssemblies)\Il2CppNinjaKiwi.Localization.dll" Private="false"/>
 		<Reference Include="$(Il2CppAssemblies)\Il2CppNinjaKiwi.GUTS.dll" Private="false"/>
 		<Reference Include="$(Il2CppAssemblies)\Il2CppNinjaKiwi.LiNK.Client.dll" Private="false"/>
 		<Reference Include="$(Il2CppAssemblies)\Unity.InputSystem.dll" Private="false"/>
