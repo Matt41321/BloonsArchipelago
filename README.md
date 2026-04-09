@@ -7,7 +7,7 @@
 
 This Mod is for the [Archipelago Multiworld Randomizer](https://archipelago.gg).  It connects you to the AP server through the settings menu.
 
-Currently in super early development, if you find any bugs please report them in the issues tab here for client issues, or in the discord for [Archipelago](https://discord.gg/archipelago) in the Bloons TD6 Thread.
+Currently in super early development, if you find any bugs please report them in the issues tab here for client issues, or in the discord for [Archipelago](https://discord.gg/archipelago) in the Bloons TD6 Channel.
 
 ## Setup
 1. Install Melon Loader 0.7.2 on Bloons TD6 (BTD6)
