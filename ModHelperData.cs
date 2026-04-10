@@ -3,7 +3,7 @@ namespace BloonsArchipelago;
 public static class ModHelperData
 {
     public const string WorksOnVersion = "54.0";
-    public const string Version = "0.7.3";
+    public const string Version = "0.7.4";
     public const string Name = "Bloons Archipelago";
 
     public const string Description = "A mod that connects Bloons to the Archipelago Multiworld Randomizer.";
