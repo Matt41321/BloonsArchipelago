@@ -148,16 +148,16 @@ namespace BloonsArchipelago.Patches.InMap
         }
     }
 
-    [HarmonyPatch(typeof(Il2CppAssets.Scripts.Simulation.Track.BossBloonManager), nameof(Il2CppAssets.Scripts.Simulation.Track.BossBloonManager.BloonDestroyed))]
-    internal static class VictoryMapBossDefeatedFlagPatch
+    [HarmonyPatch(typeof(Il2CppAssets.Scripts.Simulation.Track.BossBloonManager), nameof(Il2CppAssets.Scripts.Simulation.Track.BossBloonManager.BloonLeaked))]
+    internal static class VictoryMapBossLeakedFlagPatch
     {
         [HarmonyPrefix]
         private static void Prefix()
         {
-            if (VictoryMapBossManager.IsActive && InGame.instance?.bridge?.GetCurrentRound() >= 119)
+            if (VictoryMapBossManager.IsActive)
             {
-                VictoryMapBossManager.BossActuallyKilled = true;
-                MelonLogger.Msg("[VictoryMapBoss] Final boss tier killed — will trigger victory after BossDefeated.");
+                VictoryMapBossManager.BossActuallyKilled = false;
+                MelonLogger.Msg("[VictoryMapBoss] Boss leaked — ensuring BossActuallyKilled is false.");
             }
         }
     }
@@ -229,9 +229,11 @@ namespace BloonsArchipelago.Patches.InMap
         {
             if (!VictoryMapBossManager.IsActive) return true;
 
-            if (VictoryMapBossManager.BossActuallyKilled)
+            bool isFinalTier = InGame.instance?.bridge?.GetCurrentRound() >= 119;
+            if (isFinalTier)
             {
-                MelonLogger.Msg("[VictoryMapBoss] Blocking InGame.BossDefeated (final tier) — triggering OnVictory next frame.");
+                VictoryMapBossManager.BossActuallyKilled = true;
+                MelonLogger.Msg("[VictoryMapBoss] Final boss tier killed — blocking BossDefeated, triggering OnVictory next frame.");
                 MelonCoroutines.Start(TriggerVictoryNextFrame());
             }
             else

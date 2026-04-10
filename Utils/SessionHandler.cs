@@ -270,7 +270,7 @@ namespace BloonsArchipelago.Utils
                     {
                         if (itemName.Contains("-MUnlock"))
                         {
-                            MapsUnlocked.Add(itemName.Replace("-MUnlock", ""));
+                            MapsUnlocked.Add(GameIdToApId(itemName.Replace("-MUnlock", "")));
                         }
                         else if (itemName.Contains("-TUnlock"))
                         {
@@ -534,16 +534,28 @@ namespace BloonsArchipelago.Utils
             }
         }
 
+        private long ResolveLocationId(string locationName)
+        {
+            long id = session.Locations.GetLocationIdFromName("Bloons TD6", locationName);
+            if (id != -1) return id;
+
+            string legacy = locationName
+                .Replace("Chimps", "Clicks")
+                .Replace("MonkeyMeadow", "Tutorial");
+            if (legacy != locationName)
+                id = session.Locations.GetLocationIdFromName("Bloons TD6", legacy);
+            return id;
+        }
+
         public void CompleteCheck(string checkstring)
         {
             try
             {
-                session.Locations.CompleteLocationChecks(session.Locations.GetLocationIdFromName("Bloons TD6", checkstring));
+                long locationID = ResolveLocationId(checkstring);
+                if (locationID == -1) return;
+                session.Locations.CompleteLocationChecks(locationID);
             }
-            catch (Exception ex)
-            {
-                MelonLogger.Warning($"[BloonsArchipelago] Failed to complete check '{checkstring}': {ex.Message}");
-            }
+            catch { }
         }
 
         public void RefreshAllData()
@@ -562,7 +574,7 @@ namespace BloonsArchipelago.Utils
                 if (itemName == null) continue;
 
                 if (itemName.Contains("-MUnlock"))
-                    MapsUnlocked.Add(itemName.Replace("-MUnlock", ""));
+                    MapsUnlocked.Add(GameIdToApId(itemName.Replace("-MUnlock", "")));
                 else if (itemName.Contains("-TUnlock"))
                     MonkeysUnlocked.Add(itemName.Replace("-TUnlock", ""));
                 else if (itemName == "Progressive Knowledge")
@@ -604,8 +616,8 @@ namespace BloonsArchipelago.Utils
         {
             try
             {
-                long locationID = session.Locations.GetLocationIdFromName("Bloons TD6", locationString);
-                return session.Locations.AllLocationsChecked.Contains(locationID);
+                long locationID = ResolveLocationId(locationString);
+                return locationID != -1 && session.Locations.AllLocationsChecked.Contains(locationID);
             }
             catch
             {
