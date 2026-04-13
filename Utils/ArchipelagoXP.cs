@@ -6,7 +6,7 @@ namespace BloonsArchipelago.Utils
 {
     public class ArchipelagoXP
     {
-        public int Level = 1;
+        public int Level = 0;
         public float XP = 0.0f;
         public long XPToNext;
         public long MaxLevel;
@@ -15,16 +15,16 @@ namespace BloonsArchipelago.Utils
 
         public ArchipelagoXP(int Level, float XP, long XPToNext, long MaxLevel, bool Curved)
         {
-            this.Level = Level;
+            this.Level = (int)Math.Min((long)Level, MaxLevel);
             this.XP = XP;
             this.XPToNext = XPToNext;
             this.MaxLevel = MaxLevel;
             this.Curved = Curved;
-            Maxed = Level == MaxLevel;
+            Maxed = this.Level >= MaxLevel;
 
-            if (this.Curved)
+            if (this.Curved && !Maxed)
             {
-                this.XPToNext = GameData._instance.rankInfo.GetXpDiffForRankFromPrev(Level);
+                this.XPToNext = GameData._instance.rankInfo.GetXpDiffForRankFromPrev(Math.Max(1, this.Level));
             }
         }
 
@@ -33,8 +33,10 @@ namespace BloonsArchipelago.Utils
             this.XPToNext = XPToNext;
             this.MaxLevel = MaxLevel;
             this.Curved = Curved;
+            this.Level = (int)Math.Min(1L, MaxLevel);
+            this.Maxed = this.Level >= MaxLevel;
 
-            if (this.Curved)
+            if (this.Curved && !this.Maxed)
             {
                 this.XPToNext = GameData._instance.rankInfo.GetXpDiffForRankFromPrev(1);
             }

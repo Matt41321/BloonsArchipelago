@@ -1,7 +1,5 @@
-# Bloons AP v(0.7.4/0.5.3) (Mod/APWorld)
+# Bloons AP v(0.7.5/0.5.4) (Mod/APWorld)
 
-## Bug Fixes
-- Fixed bug where leaking boss on last tier would release
-- Added backwards compatibility with older APWorlds
+- Fixed visual for setting lvl to 0
 
 For setup information please check the Readme

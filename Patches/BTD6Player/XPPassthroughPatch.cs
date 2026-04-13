@@ -14,7 +14,7 @@ namespace BloonsArchipelago.Patches.BTD6Player
             {
                 BloonsArchipelago.sessionHandler.XPTracker.PassXP(amount);
                 int playerRank = Game.Player?.Data?.rank?.ValueInt ?? 0;
-                if (playerRank < 21)
+                if (playerRank < 51)
                     return false;
             }
             return true;

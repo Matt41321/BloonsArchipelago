@@ -12,7 +12,7 @@ namespace BloonsArchipelago.Patches.BTD6Player
         {
             if (!BloonsArchipelago.sessionHandler.ready) return true;
             int playerRank = Game.Player?.Data?.rank?.ValueInt ?? 0;
-            return playerRank >= 21;
+            return playerRank >= 51;
         }
     }
 }

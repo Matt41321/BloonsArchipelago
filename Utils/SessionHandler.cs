@@ -534,6 +534,8 @@ namespace BloonsArchipelago.Utils
             }
         }
 
+        // Returns the location ID for a check name, falling back to legacy names
+        // so that the mod works with both new and old APworld versions.
         private long ResolveLocationId(string locationName)
         {
             long id = session.Locations.GetLocationIdFromName("Bloons TD6", locationName);
