@@ -395,6 +395,7 @@ namespace BloonsArchipelago.Patches.InMap
                 "Filler"       => new Color(0.00f, 0.87f, 1.00f),   // cyan
                 "Chat"         => new Color(0.75f, 0.75f, 0.75f),   // light grey
                 "Progression"      => new Color(0.78f, 0.55f, 1.00f),   // purple
+                "Death"            => new Color(0.65f, 0.10f, 0.10f),   // dark red — DeathLink
                 _              => Color.white,
             };
         }

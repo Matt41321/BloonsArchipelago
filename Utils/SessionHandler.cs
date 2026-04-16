@@ -1,4 +1,5 @@
 using Archipelago.MultiClient.Net;
+using Archipelago.MultiClient.Net.BounceFeatures.DeathLink;
 using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Models;
 using Archipelago.MultiClient.Net.Packets;
@@ -22,6 +23,14 @@ namespace BloonsArchipelago.Utils
     {
         public ArchipelagoSession session;
         public bool ready = false;
+
+        public DeathLinkService deathLinkService;
+        public bool deathLinkEnabled = false;
+        public bool deathLinkForcedOn = false;
+        public volatile bool PendingRemoteDeath = false;
+        public volatile bool _receivingRemoteDeath = false;
+        public string lastDeathSender = "";
+        public string lastDeathCause = "";
 
         public ArchipelagoXP XPTracker;
 
@@ -217,6 +226,47 @@ namespace BloonsArchipelago.Utils
             }
 
             ready = true;
+
+            try
+            {
+                deathLinkService = session.CreateDeathLinkService();
+                deathLinkService.OnDeathLinkReceived += (DeathLink dl) =>
+                {
+                    lastDeathSender = dl.Source ?? "someone";
+                    lastDeathCause  = dl.Cause ?? "";
+                    PendingRemoteDeath = true;
+                    string deathTitle = string.IsNullOrEmpty(lastDeathCause)
+                        ? lastDeathSender + " died — you die too"
+                        : lastDeathCause;
+                    string senderGame = "";
+                    try
+                    {
+                        foreach (var p in session.Players.AllPlayers)
+                        {
+                            if (p.Name == lastDeathSender)
+                            {
+                                senderGame = p.Game ?? "";
+                                break;
+                            }
+                        }
+                    }
+                    catch { }
+                    string deathFrom = string.IsNullOrEmpty(senderGame)
+                        ? lastDeathSender
+                        : lastDeathSender + " (" + senderGame + ")";
+                    notifications.Enqueue(new APNotification
+                    {
+                        Category = "Death",
+                        ItemName = deathTitle,
+                        From     = deathFrom,
+                        FullText = deathFrom + ": " + deathTitle,
+                    });
+                };
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[BloonsArchipelago] DeathLink init failed: {ex.Message}");
+            }
 
             LoginSuccessful loginSuccess = (LoginSuccessful)result;
             Dictionary<string, object> slotData = loginSuccess.SlotData;
@@ -464,6 +514,10 @@ namespace BloonsArchipelago.Utils
                     Tier5PopRequirement = (Int64)slotData["tier5PopRequirement"];
             }
 
+            if (slotData.ContainsKey("deathLink") && (bool)slotData["deathLink"])
+                deathLinkForcedOn = true;
+            ApplyDeathLinkToggle(deathLinkForcedOn || BloonsArchipelago.DeathLinkSetting);
+
             ModHelper.Msg<BloonsArchipelago>(MedalRequirement + " Medals Required to Unlock " + VictoryMap);
 
             LoadProgress();
@@ -661,11 +715,41 @@ namespace BloonsArchipelago.Utils
             return mapDetails.ToArray();
         }
 
+        public void ApplyDeathLinkToggle(bool enabled)
+        {
+            if (deathLinkService == null) return;
+            if (deathLinkForcedOn) enabled = true;
+            try
+            {
+                if (enabled && !deathLinkEnabled)
+                {
+                    deathLinkService.EnableDeathLink();
+                    deathLinkEnabled = true;
+                    MelonLogger.Msg("[BloonsArchipelago] DeathLink enabled.");
+                }
+                else if (!enabled && deathLinkEnabled)
+                {
+                    deathLinkService.DisableDeathLink();
+                    deathLinkEnabled = false;
+                    MelonLogger.Msg("[BloonsArchipelago] DeathLink disabled.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[BloonsArchipelago] DeathLink toggle failed: {ex.Message}");
+            }
+        }
+
         public void Disconnect()
         {
             if (!ready) return;
             try { session?.Socket?.DisconnectAsync(); } catch { }
             ready = false;
+            deathLinkService = null;
+            deathLinkEnabled = false;
+            deathLinkForcedOn = false;
+            PendingRemoteDeath = false;
+            _receivingRemoteDeath = false;
         }
 
         public string PlayerSlotName()

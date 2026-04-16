@@ -71,6 +71,13 @@ public class BloonsArchipelago : BloonsTD6Mod
         ModHelper.Msg<BloonsArchipelago>("Data refreshed!");
     });
     static readonly ModSettingBool showNotifications = true;
+    static readonly ModSettingBool deathLink = new(false)
+    {
+        displayName = "DeathLink",
+        description = "Share deaths with all DeathLink-enabled players in the MultiWorld.",
+        onValueChanged = new System.Action<bool>(v => sessionHandler?.ApplyDeathLinkToggle(v)),
+    };
+    public static bool DeathLinkSetting => deathLink;
 
     public override void OnApplicationStart()
     {
@@ -306,6 +313,13 @@ public class BloonsArchipelago : BloonsTD6Mod
         {
             hasSnappedThisSession = false;
 
+            // Clear any stale DeathLink state so flags don't carry over between matches.
+            if (sessionHandler != null)
+            {
+                sessionHandler.PendingRemoteDeath = false;
+                sessionHandler._receivingRemoteDeath = false;
+            }
+
             if (Patches.InMap.FreezeTrapManager.IsActive)
             {
                 Patches.InMap.FreezeTrapManager.CleanupAll();
@@ -336,6 +350,14 @@ public class BloonsArchipelago : BloonsTD6Mod
             return;
         }
 
+
+        var shDL = sessionHandler;
+        if (shDL != null && shDL.ready && shDL.PendingRemoteDeath)
+        {
+            shDL.PendingRemoteDeath = false;
+            shDL._receivingRemoteDeath = true; // suppress outgoing re-broadcast
+            try { InGame.instance.SetHealth(0); } catch { }
+        }
 
         Patches.InMap.FreezeTrapManager.Update();
         Patches.InMap.BeeTrapManager.Update();
