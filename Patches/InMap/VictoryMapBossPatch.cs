@@ -64,9 +64,9 @@ namespace BloonsArchipelago.Patches.InMap
             var inGameData = InGameData.Editable;
             if (inGameData.selectedMap != sh.VictoryMap) return;
 
-            var bossType = VictoryMapBossManager.GetBossForSession(sh.APID);
+            var bossType = VictoryMapBossManager.GetBossForSession(sh.APID + "|" + sh.PlayerSlotName());
             bool isElite = sh.GoalType == 2;
-            MelonLogger.Msg($"[VictoryMapBoss] Starting boss event: {bossType} (elite={isElite}) on {inGameData.selectedMap} (seed: {sh.APID})");
+            MelonLogger.Msg($"[VictoryMapBoss] Starting boss event: {bossType} (elite={isElite}) on {inGameData.selectedMap} (seed: {sh.APID}, slot: {sh.PlayerSlotName()})");
 
             var spawnRounds = BossGameData.DefaultSpawnRounds;
             MelonLogger.Msg($"[VictoryMapBoss] DefaultSpawnRounds={spawnRounds?.Count.ToString() ?? "NULL"}");
