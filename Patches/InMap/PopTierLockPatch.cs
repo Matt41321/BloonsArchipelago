@@ -101,7 +101,8 @@ namespace BloonsArchipelago.Patches.InMap
             try
             {
                 var sh = BloonsArchipelago.sessionHandler;
-                if (sh == null || !sh.ready || !sh.PopTierChecksEnabled) return;
+                if (sh == null || !sh.ready) return;
+                if (!sh.PopTierChecksEnabled && !sh.UpgradeSanityEnabled) return;
 
                 bool needsRefresh = false;
                 var buttons = Object.FindObjectsOfType<UpgradeButton>();
@@ -123,6 +124,40 @@ namespace BloonsArchipelago.Patches.InMap
                         if (string.IsNullOrEmpty(baseId)) continue;
 
                         if (baseId == VILLAGE) continue;
+
+                        // Upgrade-sanity "Locked" text (T4/T5 path missing).
+                        // Pop-tier progress text takes priority when it would also write.
+                        if (sh.UpgradeSanityEnabled && tier >= 3)
+                        {
+                            string pathName = upgrade.path switch
+                            {
+                                0 => "TopPath",
+                                1 => "MiddlePath",
+                                2 => "BottomPath",
+                                _ => null,
+                            };
+                            if (pathName != null && !sh.PathsUnlocked.Contains($"{baseId}-{pathName}"))
+                            {
+                                bool popWillWrite = false;
+                                if (sh.PopTierChecksEnabled)
+                                {
+                                    string popKey = $"{baseId}-Tier{tier + 1}";
+                                    if (!sh.PermanentlyUnlockedTiers.Contains(popKey))
+                                    {
+                                        long t2 = GetAggregateProgress(baseId);
+                                        long r2 = GetRequired(sh, tier);
+                                        popWillWrite = t2 < r2;
+                                    }
+                                }
+                                if (!popWillWrite && btn.cost != null)
+                                {
+                                    btn.cost.SetText("Locked");
+                                    continue;
+                                }
+                            }
+                        }
+
+                        if (!sh.PopTierChecksEnabled) continue;
 
                         string unlockKey = $"{baseId}-Tier{tier + 1}";
                         if (sh.PermanentlyUnlockedTiers.Contains(unlockKey)) continue;

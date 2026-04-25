@@ -38,15 +38,14 @@ namespace BloonsArchipelago.Patches.InMap
                     BloonsArchipelago.sessionHandler.CompleteCheck(apMap + "-Impoppable");
                 }
 
-                // Round Sanity checks
                 int interval = BloonsArchipelago.sessionHandler.RoundSanityInterval;
                 if (interval > 0)
                 {
                     int round = completedRound + 1; // completedRound is 0-indexed
-                    if (round <= 100 && round % interval == 0)
+                    for (int r = interval; r <= round && r <= 100; r += interval)
                     {
-                        BloonsArchipelago.sessionHandler.CompleteCheck($"{apMap}-Round {round}");
-                        ModHelper.Msg<BloonsArchipelago>($"Round Sanity check: {apMap}-Round {round}");
+                        BloonsArchipelago.sessionHandler.CompleteCheck($"{apMap}-Round {r}");
+                        ModHelper.Msg<BloonsArchipelago>($"Round Sanity check: {apMap}-Round {r}");
                     }
                 }
             }

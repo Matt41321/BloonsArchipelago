@@ -145,6 +145,9 @@ namespace BloonsArchipelago.Utils
 
         public int RoundSanityInterval = 0;
 
+        public bool UpgradeSanityEnabled = false;
+        public List<string> PathsUnlocked = new();
+
         public bool ProgressivePricesEnabled = false;
         public int ProgressivePricesCount = 0;
 
@@ -339,6 +342,11 @@ namespace BloonsArchipelago.Utils
                         {
                             HeroesUnlocked.Add(itemName.Replace("-HUnlock", ""));
                         }
+                        else if (itemName.EndsWith("-TopPath") || itemName.EndsWith("-MiddlePath") || itemName.EndsWith("-BottomPath"))
+                        {
+                            if (!PathsUnlocked.Contains(itemName))
+                                PathsUnlocked.Add(itemName);
+                        }
                         else if (itemName == "Progressive Prices")
                         {
                             ProgressivePricesCount++;
@@ -497,6 +505,9 @@ namespace BloonsArchipelago.Utils
             if (slotData.ContainsKey("roundSanity"))
                 RoundSanityInterval = (int)(Int64)slotData["roundSanity"];
 
+            if (slotData.ContainsKey("upgradeSanity"))
+                UpgradeSanityEnabled = (bool)slotData["upgradeSanity"];
+
             if (slotData.ContainsKey("progressivePrices"))
                 ProgressivePricesEnabled = (bool)slotData["progressivePrices"];
 
@@ -620,6 +631,7 @@ namespace BloonsArchipelago.Utils
             MonkeysUnlocked.Clear();
             KnowledgeUnlocked.Clear();
             HeroesUnlocked.Clear();
+            PathsUnlocked.Clear();
             Medals = 0;
             ProgressiveKnowledgeCount = 0;
             ProgressivePricesCount = 0;
@@ -647,6 +659,11 @@ namespace BloonsArchipelago.Utils
                     KnowledgeUnlocked.Add(itemName.Replace("-KUnlock", ""));
                 else if (itemName.Contains("-HUnlock"))
                     HeroesUnlocked.Add(itemName.Replace("-HUnlock", ""));
+                else if (itemName.EndsWith("-TopPath") || itemName.EndsWith("-MiddlePath") || itemName.EndsWith("-BottomPath"))
+                {
+                    if (!PathsUnlocked.Contains(itemName))
+                        PathsUnlocked.Add(itemName);
+                }
                 else if (itemName == "Medal")
                     Medals++;
             }
@@ -765,6 +782,7 @@ namespace BloonsArchipelago.Utils
             if (itemName.Contains("-TUnlock")) return "Tower Unlock";
             if (itemName.Contains("-HUnlock")) return "Hero";
             if (itemName.Contains("-KUnlock")) return "Knowledge";
+            if (itemName.EndsWith("-TopPath") || itemName.EndsWith("-MiddlePath") || itemName.EndsWith("-BottomPath")) return "Upgrade Path";
             if (itemName == "Progressive Knowledge") return "Progression";
             if (itemName == "Progressive Prices")    return "Progression";
             if (itemName == "Medal")                 return "Medal";
@@ -786,6 +804,8 @@ namespace BloonsArchipelago.Utils
             if (itemName.Contains("-TUnlock")) return SplitPascalCase(itemName.Replace("-TUnlock", ""));
             if (itemName.Contains("-HUnlock")) return SplitPascalCase(itemName.Replace("-HUnlock", ""));
             if (itemName.Contains("-KUnlock")) return SplitPascalCase(itemName.Replace("-KUnlock", ""));
+            if (itemName.EndsWith("-TopPath") || itemName.EndsWith("-MiddlePath") || itemName.EndsWith("-BottomPath"))
+                return SplitPascalCase(itemName.Replace("-", " "));
             return itemName;
         }
 
