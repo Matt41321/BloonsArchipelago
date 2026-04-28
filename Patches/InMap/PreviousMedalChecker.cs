@@ -39,13 +39,22 @@ namespace BloonsArchipelago.Patches.InMap
                 }
 
                 int interval = BloonsArchipelago.sessionHandler.RoundSanityInterval;
+                var customChecks = BloonsArchipelago.sessionHandler.CustomRoundChecks;
+                int round = completedRound + 1;
                 if (interval > 0)
                 {
-                    int round = completedRound + 1; // completedRound is 0-indexed
                     for (int r = interval; r <= round && r <= 100; r += interval)
                     {
                         BloonsArchipelago.sessionHandler.CompleteCheck($"{apMap}-Round {r}");
                         ModHelper.Msg<BloonsArchipelago>($"Round Sanity check: {apMap}-Round {r}");
+                    }
+                }
+                foreach (int r in customChecks)
+                {
+                    if (r <= round && r <= 100)
+                    {
+                        BloonsArchipelago.sessionHandler.CompleteCheck($"{apMap}-Round {r}");
+                        ModHelper.Msg<BloonsArchipelago>($"Custom Round check: {apMap}-Round {r}");
                     }
                 }
             }

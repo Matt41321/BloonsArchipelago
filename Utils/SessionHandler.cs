@@ -144,6 +144,7 @@ namespace BloonsArchipelago.Utils
         public string currentMode = "";
 
         public int RoundSanityInterval = 0;
+        public HashSet<int> CustomRoundChecks = new();
 
         public bool UpgradeSanityEnabled = false;
         public List<string> PathsUnlocked = new();
@@ -504,6 +505,19 @@ namespace BloonsArchipelago.Utils
 
             if (slotData.ContainsKey("roundSanity"))
                 RoundSanityInterval = (int)(Int64)slotData["roundSanity"];
+
+            if (slotData.ContainsKey("customRoundChecks"))
+            {
+                try
+                {
+                    if (slotData["customRoundChecks"] is Newtonsoft.Json.Linq.JArray ja)
+                    {
+                        foreach (var item in ja)
+                            CustomRoundChecks.Add((int)item);
+                    }
+                }
+                catch { }
+            }
 
             if (slotData.ContainsKey("upgradeSanity"))
                 UpgradeSanityEnabled = (bool)slotData["upgradeSanity"];
