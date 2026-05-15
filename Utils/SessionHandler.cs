@@ -135,6 +135,8 @@ namespace BloonsArchipelago.Utils
         public string VictoryMap = "";
         public long MedalRequirement = 0;
         public Dictionary<string, List<string>> MapModes = new();
+        public bool HasModePool = false;
+        public List<string> LegacyModes = new();
         public string GoalMode = "Impoppable";
         public int Medals = 0;
         /// 0 = default, 1 = normal boss, 2 = elite boss
@@ -499,6 +501,7 @@ namespace BloonsArchipelago.Utils
 
             if (slotData.ContainsKey("mapModes"))
             {
+                HasModePool = true;
                 try
                 {
                     if (slotData["mapModes"] is Newtonsoft.Json.Linq.JObject jo)
@@ -514,6 +517,23 @@ namespace BloonsArchipelago.Utils
                     }
                 }
                 catch { }
+            }
+            else
+            {
+                int legacyDifficulty = 14;
+                if (slotData.ContainsKey("difficulty"))
+                {
+                    try { legacyDifficulty = (int)(Int64)slotData["difficulty"]; } catch { }
+                }
+                LegacyModes.AddRange(new[] { "Easy", "Medium", "Hard", "Impoppable" });
+                if (legacyDifficulty >= 5)
+                    LegacyModes.Add("Chimps");
+                if (legacyDifficulty == 14)
+                    LegacyModes.AddRange(new[] {
+                        "PrimaryOnly", "MilitaryOnly", "MagicOnly",
+                        "Deflation", "Apopalypse", "Reverse",
+                        "DoubleMoabHealth", "HalfCash", "AlternateBloonsRounds"
+                    });
             }
 
             if (slotData.ContainsKey("goalMode"))
