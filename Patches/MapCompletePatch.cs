@@ -23,31 +23,11 @@ namespace BloonsArchipelago.Patches
             {
                 if (BloonsArchipelago.sessionHandler.currentMap == BloonsArchipelago.sessionHandler.VictoryMap)
                 {
-                    switch (BloonsArchipelago.sessionHandler.Difficulty)
+                    string currentApMode = Utils.SessionHandler.GameModeToApMode(BloonsArchipelago.sessionHandler.currentMode);
+                    if (currentApMode == BloonsArchipelago.sessionHandler.GoalMode)
                     {
-                        case 4:
-                            if (BloonsArchipelago.sessionHandler.currentMode == "Impoppable")
-                            {
-                                BloonsArchipelago.sessionHandler.CompleteRando();
-                                __instance.difficulty.text = "You have just beaten the Randomizer! Congragulations!";
-                            }
-                            break;
-                        case 5:
-                            if (BloonsArchipelago.sessionHandler.currentMode == "Clicks")
-                            {
-                                BloonsArchipelago.sessionHandler.CompleteRando();
-                                __instance.difficulty.text = "You have just beaten the Randomizer! Congragulations!";
-                            }
-                            break;
-                        case 14:
-                            if (BloonsArchipelago.sessionHandler.currentMode == "Clicks")
-                            {
-                                BloonsArchipelago.sessionHandler.CompleteRando();
-                                __instance.difficulty.text = "You have just beaten the Randomizer! Congragulations!";
-                            }
-                            break;
-                        default:
-                            break;
+                        BloonsArchipelago.sessionHandler.CompleteRando();
+                        __instance.difficulty.text = "You have just beaten the Randomizer! Congragulations!";
                     }
                     return;
                 }

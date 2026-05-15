@@ -134,7 +134,8 @@ namespace BloonsArchipelago.Utils
         public string APID = "";
         public string VictoryMap = "";
         public long MedalRequirement = 0;
-        public long Difficulty = 0;
+        public Dictionary<string, List<string>> MapModes = new();
+        public string GoalMode = "Impoppable";
         public int Medals = 0;
         /// 0 = default, 1 = normal boss, 2 = elite boss
         public int GoalType = 0;
@@ -495,7 +496,28 @@ namespace BloonsArchipelago.Utils
 
             VictoryMap = ApIdToGameId((string)slotData["victoryLocation"]);
             MedalRequirement = (Int64)slotData["medalsNeeded"];
-            Difficulty = (Int64)slotData["difficulty"];
+
+            if (slotData.ContainsKey("mapModes"))
+            {
+                try
+                {
+                    if (slotData["mapModes"] is Newtonsoft.Json.Linq.JObject jo)
+                    {
+                        foreach (var kv in jo)
+                        {
+                            var modes = new List<string>();
+                            if (kv.Value is Newtonsoft.Json.Linq.JArray ja)
+                                foreach (var token in ja)
+                                    modes.Add((string)token);
+                            MapModes[kv.Key] = modes;
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            if (slotData.ContainsKey("goalMode"))
+                GoalMode = (string)slotData["goalMode"];
 
             if (slotData.ContainsKey("goal"))
                 GoalType = (int)(Int64)slotData["goal"];

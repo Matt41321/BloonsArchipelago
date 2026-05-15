@@ -14,7 +14,7 @@ Currently in super early development, if you find any bugs please report them in
 2. Open BTD6 WITHOUT any mods installed
 3. Open your BTD6 folder and open mods
 4. Put Both BTD6 Mod Helper and Bloons Archipelago into the Mods folder.
-5. Open the BTD6
+5. Open BTD6
 6. Click the Mods Button, and hit the gear icon next to Bloons Archipelago
 7. Input all your server information, and click the connect button.
 
