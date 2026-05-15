@@ -36,8 +36,16 @@ namespace BloonsArchipelago.Patches.InMap
                 sh.currentMode = __instance.SelectedDifficulty;
 
             string apMap = Utils.SessionHandler.GameIdToApId(sh.currentMap);
-            sh.MapModes.TryGetValue(apMap, out var mapModes);
-            mapModes ??= new System.Collections.Generic.List<string>();
+            System.Collections.Generic.List<string> mapModes;
+            if (sh.HasModePool)
+            {
+                sh.MapModes.TryGetValue(apMap, out mapModes);
+                mapModes ??= new System.Collections.Generic.List<string>();
+            }
+            else
+            {
+                mapModes = sh.LegacyModes;
+            }
 
             string mode = sh.currentMode;
 

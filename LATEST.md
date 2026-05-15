@@ -1,6 +1,6 @@
-# Bloons AP v(0.8.3/0.6.2) (Mod/APWorld)
+# Bloons AP v(0.8.4/0.6.2) (Mod/APWorld)
 
 ## Changes
-- Added backwards compatibility for older APWorlds
+- Fixed backwards compatibility
 
 For setup information please check the Readme
