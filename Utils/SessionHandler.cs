@@ -16,6 +16,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace BloonsArchipelago.Utils
 {
@@ -487,14 +488,31 @@ namespace BloonsArchipelago.Utils
                     previousNotifications.TryAdd(s, 0);
             }
 
-            if (session.DataStorage["XP-" + PlayerSlotName()])
+            var staticXPReq = (Int64)slotData["staticXPReq"];
+            var maxLevel    = (Int64)slotData["maxLevel"];
+            var xpCurve     = (bool)slotData["xpCurve"];
+            XPTracker = new ArchipelagoXP(staticXPReq, maxLevel, xpCurve);
+
+            string slotName = PlayerSlotName();
+            session.DataStorage["Level-" + slotName].GetAsync<int>().ContinueWith(levelTask =>
             {
-                XPTracker = new ArchipelagoXP(session.DataStorage["Level-" + PlayerSlotName()], session.DataStorage["XP-" + PlayerSlotName()], (Int64)slotData["staticXPReq"], (Int64)slotData["maxLevel"], (bool)slotData["xpCurve"]);
-            }
-            else
-            {
-                XPTracker = new ArchipelagoXP((Int64)slotData["staticXPReq"], (Int64)slotData["maxLevel"], (bool)slotData["xpCurve"]);
-            }
+                try
+                {
+                    int savedLevel = levelTask.Result;
+                    if (savedLevel > 0)
+                    {
+                        session.DataStorage["XP-" + slotName].GetAsync<float>().ContinueWith(xpTask =>
+                        {
+                            try
+                            {
+                                XPTracker = new ArchipelagoXP(savedLevel, xpTask.Result, staticXPReq, maxLevel, xpCurve);
+                            }
+                            catch { }
+                        });
+                    }
+                }
+                catch { }
+            });
 
             VictoryMap = ApIdToGameId((string)slotData["victoryLocation"]);
             MedalRequirement = (Int64)slotData["medalsNeeded"];
@@ -676,7 +694,10 @@ namespace BloonsArchipelago.Utils
             {
                 long locationID = ResolveLocationId(checkstring);
                 if (locationID == -1) return;
-                session.Locations.CompleteLocationChecks(locationID);
+                Task.Run(() =>
+                {
+                    try { session.Locations.CompleteLocationChecks(locationID); } catch { }
+                });
             }
             catch { }
         }
@@ -776,7 +797,11 @@ namespace BloonsArchipelago.Utils
                     if (MapsUnlocked.Contains(apMapId) || mapId == VictoryMap)
                     {
                         if (mapId != VictoryMap)
-                            CompleteCheck(apMapId + "-Unlock");
+                        {
+                            string checkName = apMapId + "-Unlock";
+                            if (!LocationChecked(checkName))
+                                CompleteCheck(checkName);
+                        }
                         mapDetails.Add(map);
                     }
                 }
