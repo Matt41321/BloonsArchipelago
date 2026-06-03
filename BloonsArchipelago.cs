@@ -45,9 +45,45 @@ public class BloonsArchipelago : BloonsTD6Mod
     static readonly ModSettingString password = "";
     static readonly ModSettingButton archipelagoConnect = new(() =>
     {
+        if (sessionHandler.ready)
+        {
+            sessionHandler.notifications.Enqueue(new Utils.APNotification
+            {
+                ItemName   = "Already connected.",
+                From       = "Disconnect first to reconnect.",
+                FullText   = "AlreadyConnected",
+                IsOutgoing = true,
+                ItemColor  = UnityEngine.Color.white,
+            });
+            return;
+        }
+
         ModHelper.Msg<BloonsArchipelago>("Connecting...");
 
         sessionHandler = new SessionHandler(url, port, slot, password);
+
+        if (sessionHandler.ready)
+        {
+            sessionHandler.notifications.Enqueue(new Utils.APNotification
+            {
+                ItemName   = "You have connected.",
+                From       = "",
+                FullText   = "Connected",
+                IsOutgoing = true,
+                ItemColor  = new UnityEngine.Color(0.00f, 1.00f, 0.53f),
+            });
+        }
+        else
+        {
+            sessionHandler.notifications.Enqueue(new Utils.APNotification
+            {
+                ItemName   = "Connection failed.",
+                From       = "Check details or try again.",
+                FullText   = "ConnectionFailed",
+                IsOutgoing = true,
+                ItemColor  = new UnityEngine.Color(1.00f, 0.27f, 0.27f),
+            });
+        }
     });
     static readonly ModSettingButton archipelagoDisconnect = new(() =>
     {
