@@ -39,15 +39,25 @@ namespace BloonsArchipelago.Patches
         }
     }
 
-    [HarmonyPatch(typeof(HeroUpgradeDetails), nameof(HeroUpgradeDetails.Awake))]
+    [HarmonyPatch(typeof(HeroUpgradeDetails), nameof(HeroUpgradeDetails.SetupHeroPurchaseButtons))]
     internal class PreventDoubleBuy
     {
         [HarmonyPostfix]
-        public static void Postfix(HeroUpgradeDetails __instance)
+        public static void Postfix(HeroUpgradeDetails __instance, string heroIdToUse)
         {
-            if (BloonsArchipelago.sessionHandler.ready)
-            {
+            if (!BloonsArchipelago.sessionHandler.ready)
+                return;
+            if (BloonsArchipelago.sessionHandler.HeroesUnlocked.Contains(heroIdToUse.Replace("HeroDetailsModel_", "")))
+                return;
+
+            if (__instance.buyHeroContainer != null)
+                __instance.buyHeroContainer.SetActive(false);
+            if (__instance.buyHeroButton != null)
                 __instance.buyHeroButton.gameObject.SetActive(false);
+            if (__instance.lockedText != null)
+            {
+                __instance.lockedText.gameObject.SetActive(true);
+                __instance.lockedText.text = "Locked";
             }
         }
     }

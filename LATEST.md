@@ -1,6 +1,7 @@
-# Bloons AP v(0.8.6/0.6.3) (Mod/APWorld)
+# Bloons AP v(0.8.7/0.6.3) (Mod/APWorld)
 
 ## Changes
-- Added Connection Notifications to make it more clear if you connected
+- Fixed releasing on victory for older AP Worlds
+- Fixed bug on Heroes tab where you had the option to buy locked heroes
 
 For setup information please check the Readme

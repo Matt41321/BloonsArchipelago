@@ -132,6 +132,12 @@ namespace BloonsArchipelago.Utils
         public static string GameModeToApMode(string mode)
             => _gameModeToApMode.TryGetValue(mode, out string apMode) ? apMode : mode;
 
+        private static readonly string[] _modeHardnessOrder =
+        {
+            "Chimps", "Impoppable", "HalfCash", "AlternateBloonsRounds", "DoubleMoabHealth", "MagicOnly",
+            "Hard", "Apopalypse", "MilitaryOnly", "Reverse", "Medium", "Deflation", "PrimaryOnly", "Easy",
+        };
+
         public string APID = "";
         public string VictoryMap = "";
         public long MedalRequirement = 0;
@@ -555,7 +561,20 @@ namespace BloonsArchipelago.Utils
             }
 
             if (slotData.ContainsKey("goalMode"))
+            {
                 GoalMode = (string)slotData["goalMode"];
+            }
+            else if (!HasModePool)
+            {
+                foreach (string mode in _modeHardnessOrder)
+                {
+                    if (LegacyModes.Contains(mode))
+                    {
+                        GoalMode = mode;
+                        break;
+                    }
+                }
+            }
 
             if (slotData.ContainsKey("goal"))
                 GoalType = (int)(Int64)slotData["goal"];
