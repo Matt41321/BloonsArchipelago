@@ -13,6 +13,8 @@ namespace BloonsArchipelago.Patches.KnowledgeMenu
         {
             if (BloonsArchipelago.sessionHandler.ready)
             {
+                BloonsArchipelago.sessionHandler.SyncReceivedItems();
+
                 Button addpoints = __instance.selectedPanelAddPointsBtn;
                 NK_TextMeshProUGUI text = addpoints.transform.GetChild(2).GetComponent<NK_TextMeshProUGUI>();
                 text.text = "Check";

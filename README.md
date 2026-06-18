@@ -9,7 +9,7 @@ This Mod is for the [Archipelago Multiworld Randomizer](https://archipelago.gg).
 
 Currently in super early development, if you find any bugs please report them in the issues tab here for client issues, or in the discord for [Archipelago](https://discord.gg/archipelago) in the Bloons TD6 Channel.
 
-## Setup
+## Steam Setup
 1. Install Melon Loader 0.7.3 on Bloons TD6 (BTD6)
 2. Open BTD6 WITHOUT any mods installed
 3. Open your BTD6 folder and open mods
@@ -17,5 +17,15 @@ Currently in super early development, if you find any bugs please report them in
 5. Open BTD6
 6. Click the Mods Button, and hit the gear icon next to Bloons Archipelago
 7. Input all your server information, and click the connect button.
+
+## Epic Games Setup
+1. Install Melon Loader 0.7.3 on Bloons TD6 (BTD6)
+2. Open BTD6 WITHOUT any mods installed
+3. Open your BTD6 folder and open mods
+4. Put Both BTD6 Mod Helper and Bloons Archipelago into the Mods folder.
+5. Put the [Epic Games Compat](https://github.com/GrahamKracker/BTD6EpicGamesModCompat/releases/latest) into the Plugins folder.
+6. Open BTD6
+7. Click the Mods Button, and hit the gear icon next to Bloons Archipelago
+8. Input all your server information, and click the connect button.
 
 [![Requires BTD6 Mod Helper](https://raw.githubusercontent.com/gurrenm3/BTD-Mod-Helper/master/banner.png)](https://github.com/gurrenm3/BTD-Mod-Helper#readme)

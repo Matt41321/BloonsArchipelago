@@ -408,6 +408,97 @@ namespace BloonsArchipelago.Utils
                                 Patches.InMap.LiteratureTrapManager.PendingLiteratureCount++;
                             }
                         }
+                        else if (itemName == "144p Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.ResolutionTrapManager.PendingResolutionTrapCount++;
+                            }
+                        }
+                        else if (itemName == "Math Quiz Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.MathQuizTrapManager.PendingMathQuizCount++;
+                            }
+                        }
+                        else if (itemName == "Input Sequence Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.InputSequenceTrapManager.PendingInputSequenceCount++;
+                            }
+                        }
+                        else if (itemName == "Swap Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.SwapTrapManager.PendingSwapCount++;
+                            }
+                        }
+                        else if (itemName == "Flood Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.FloodTrapManager.PendingFloodCount++;
+                            }
+                        }
+                        else if (itemName == "Shuffle Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.ShuffleTrapManager.PendingShuffleCount++;
+                            }
+                        }
+                        else if (itemName == "Zoom Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.ZoomTrapManager.PendingZoomCount++;
+                            }
+                        }
+                        else if (itemName == "Screen Flip Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.ScreenFlipTrapManager.PendingScreenFlipCount++;
+                            }
+                        }
+                        else if (itemName == "Chaos Control Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.ChaosTrapManager.PendingChaosCount++;
+                            }
+                        }
+                        else if (itemName == "Trivia Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.TriviaTrapManager.PendingTriviaCount++;
+                            }
+                        }
+                        else if (itemName == "Pokemon Trivia Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.PokemonTriviaTrapManager.PendingPokemonTriviaCount++;
+                            }
+                        }
+                        else if (itemName == "Number Sequence Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.NumberSequenceTrapManager.PendingNumberSequenceCount++;
+                            }
+                        }
+                        else if (itemName == "Yap Trap")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.YapTrapManager.PendingYapCount++;
+                            }
+                        }
                         else if (itemName == "Monkey Boost")
                         {
                             if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
@@ -427,6 +518,13 @@ namespace BloonsArchipelago.Utils
                             if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
                             {
                                 Patches.InMap.CashDropManager.PendingCashDropCount++;
+                            }
+                        }
+                        else if (itemName == "Thrive")
+                        {
+                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
+                            {
+                                Patches.InMap.ThriveManager.PendingThriveCount++;
                             }
                         }
                         else if (itemName == "Medal")
@@ -558,6 +656,7 @@ namespace BloonsArchipelago.Utils
                         "Deflation", "Apopalypse", "Reverse",
                         "DoubleMoabHealth", "HalfCash", "AlternateBloonsRounds"
                     });
+                MelonLogger.Msg($"[BloonsArchipelago] Legacy world detected — difficulty={legacyDifficulty}, modes={string.Join(", ", LegacyModes)}");
             }
 
             if (slotData.ContainsKey("goalMode"))
@@ -721,8 +820,10 @@ namespace BloonsArchipelago.Utils
             catch { }
         }
 
-        public void RefreshAllData()
+        public void SyncReceivedItems()
         {
+            if (session == null) return;
+
             MapsUnlocked.Clear();
             MonkeysUnlocked.Clear();
             KnowledgeUnlocked.Clear();
@@ -766,7 +867,11 @@ namespace BloonsArchipelago.Utils
 
             if (ProgressiveKnowledgeCount > 0)
                 RefreshKnowledgeUnlocked();
+        }
 
+        public void RefreshAllData()
+        {
+            SyncReceivedItems();
             RefreshDefaultMapList();
             GameData._instance.mapSet.Maps.items = GetMapDetails();
         }
@@ -887,14 +992,28 @@ namespace BloonsArchipelago.Utils
             if (itemName == "Progressive Prices")    return "Progression";
             if (itemName == "Medal")                 return "Medal";
             if (CategoryTowers.ContainsKey(itemName)) return "Tower Unlock";
-            if (itemName == "Modified Bloons"  ||
-                itemName == "Freeze Trap"      ||
-                itemName == "Speed Up Trap"    ||
-                itemName == "Bee Trap"         ||
-                itemName == "Literature Trap") return "Trap";
+            if (itemName == "Modified Bloons"        ||
+                itemName == "Freeze Trap"            ||
+                itemName == "Speed Up Trap"          ||
+                itemName == "Bee Trap"               ||
+                itemName == "Literature Trap"        ||
+                itemName == "144p Trap"              ||
+                itemName == "Flood Trap"             ||
+                itemName == "Swap Trap"              ||
+                itemName == "Shuffle Trap"           ||
+                itemName == "Zoom Trap"              ||
+                itemName == "Screen Flip Trap"       ||
+                itemName == "Chaos Control Trap"     ||
+                itemName == "Math Quiz Trap"         ||
+                itemName == "Trivia Trap"            ||
+                itemName == "Pokemon Trivia Trap"    ||
+                itemName == "Number Sequence Trap"   ||
+                itemName == "Input Sequence Trap"    ||
+                itemName == "Yap Trap") return "Trap";
             if (itemName == "Monkey Boost"  ||
                 itemName == "Monkey Storm"  ||
-                itemName == "Cash Drop")       return "Filler";
+                itemName == "Cash Drop"     ||
+                itemName == "Thrive")          return "Filler";
             return "Item";
         }
 

@@ -364,9 +364,23 @@ public class BloonsArchipelago : BloonsTD6Mod
             Patches.InMap.BeeTrapManager.CleanupAll();
             Patches.InMap.SpeedUpTrapManager.CleanupAll();
             Patches.InMap.LiteratureTrapManager.CleanupAll();
+            Patches.InMap.ResolutionTrapManager.CleanupAll();
             Patches.InMap.MonkeyBoostManager.CleanupAll();
             Patches.InMap.MonkeyStormManager.CleanupAll();
             Patches.InMap.CashDropManager.CleanupAll();
+            Patches.InMap.ThriveManager.CleanupAll();
+            Patches.InMap.MathQuizTrapManager.CleanupAll();
+            Patches.InMap.InputSequenceTrapManager.CleanupAll();
+            Patches.InMap.SwapTrapManager.CleanupAll();
+            Patches.InMap.FloodTrapManager.CleanupAll();
+            Patches.InMap.ShuffleTrapManager.CleanupAll();
+            Patches.InMap.ZoomTrapManager.CleanupAll();
+            Patches.InMap.ScreenFlipTrapManager.CleanupAll();
+            Patches.InMap.ChaosTrapManager.CleanupAll();
+            Patches.InMap.TriviaTrapManager.CleanupAll();
+            Patches.InMap.PokemonTriviaTrapManager.CleanupAll();
+            Patches.InMap.NumberSequenceTrapManager.CleanupAll();
+            Patches.InMap.YapTrapManager.CleanupAll();
             Patches.InMap.VictoryMapBossStartingCashPatch.Reset();
 
             Patches.HomeMenu.MonkeyTierDisplay.UpdateMonkeyTierDisplays();
@@ -399,9 +413,23 @@ public class BloonsArchipelago : BloonsTD6Mod
         Patches.InMap.BeeTrapManager.Update();
         Patches.InMap.SpeedUpTrapManager.Update();
         Patches.InMap.LiteratureTrapManager.Update();
+        Patches.InMap.ResolutionTrapManager.Update();
         Patches.InMap.MonkeyBoostManager.Update();
         Patches.InMap.MonkeyStormManager.Update();
         Patches.InMap.CashDropManager.Update();
+        Patches.InMap.ThriveManager.Update();
+        Patches.InMap.MathQuizTrapManager.Update();
+        Patches.InMap.InputSequenceTrapManager.Update();
+        Patches.InMap.SwapTrapManager.Update();
+        Patches.InMap.FloodTrapManager.Update();
+        Patches.InMap.ShuffleTrapManager.Update();
+        Patches.InMap.ZoomTrapManager.Update();
+        Patches.InMap.ScreenFlipTrapManager.Update();
+        Patches.InMap.ChaosTrapManager.Update();
+        Patches.InMap.TriviaTrapManager.Update();
+        Patches.InMap.PokemonTriviaTrapManager.Update();
+        Patches.InMap.NumberSequenceTrapManager.Update();
+        Patches.InMap.YapTrapManager.Update();
         if (Patches.InMap.VictoryMapBossManager.IsActive)
             Patches.InMap.VictoryMapBossStartingCashPatch.TryGiveCash();
 
@@ -419,7 +447,10 @@ public class BloonsArchipelago : BloonsTD6Mod
         if (pendingNotifications.Count > 0 && now - lastNotificationTime >= 1f)
         {
             var notif = pendingNotifications.Dequeue();
-            if (showNotifications)
+            bool isConnectionNotif = notif.FullText == "Connected"
+                                  || notif.FullText == "ConnectionFailed"
+                                  || notif.FullText == "AlreadyConnected";
+            if (showNotifications || isConnectionNotif)
                 Patches.InMap.APNotificationPanel.Show(notif);
             lastNotificationTime = now;
         }

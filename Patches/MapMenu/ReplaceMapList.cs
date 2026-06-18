@@ -37,6 +37,8 @@ namespace BloonsArchipelago.Patches.MapMenu
                 SessionHandler.RebuildValidMapIds();
             }
 
+            BloonsArchipelago.sessionHandler.SyncReceivedItems();
+
             GameData._instance.mapSet.Maps.items = BloonsArchipelago.sessionHandler.GetMapDetails();
         }
     }
