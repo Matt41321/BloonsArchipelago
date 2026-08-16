@@ -1,6 +1,7 @@
 using Il2CppAssets.Scripts.Models.Powers;
 using Il2CppAssets.Scripts.Unity;
 using Il2CppAssets.Scripts.Unity.UI_New.InGame;
+using BloonsArchipelago.Utils;
 using MelonLoader;
 using System;
 using UnityEngine;
@@ -51,7 +52,7 @@ namespace BloonsArchipelago.Patches.InMap
                     return;
                 }
 
-                inGame.bridge.ActivatePower(new Vector2(0f, 0f), _cachedModel);
+                BridgeCompat.ActivatePower(inGame.bridge, new Vector2(0f, 0f), _cachedModel);
                 MelonLogger.Msg("[CashDrop] Activated CashDrop via bridge.ActivatePower");
             }
             catch (Exception ex)

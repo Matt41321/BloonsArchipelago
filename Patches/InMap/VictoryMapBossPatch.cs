@@ -1,3 +1,4 @@
+using BloonsArchipelago.Utils;
 using BTD_Mod_Helper.Extensions;
 using HarmonyLib;
 using Il2CppAssets.Scripts.Data.Boss;
@@ -269,7 +270,7 @@ namespace BloonsArchipelago.Patches.InMap
                 var sh = BloonsArchipelago.sessionHandler;
                 double bonus = (sh?.GoalType == 2 ? 5000.0 : 1500.0) - 850.0;
                 MelonLogger.Msg($"[VictoryMapBoss] Calling AddCash({bonus}, 0) GoalType={sh?.GoalType}");
-                inGame.bridge.AddCash(bonus, 0);
+                BridgeCompat.AddCash(inGame.bridge, bonus, 0);
                 MelonLogger.Msg($"[VictoryMapBoss] AddCash completed successfully");
             }
             catch (Exception ex)
