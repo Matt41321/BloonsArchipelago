@@ -267,14 +267,21 @@ namespace BloonsArchipelago.Patches.InMap
                 _titleTmp = titleGo.AddComponent<TextMeshProUGUI>();
                 _titleTmp.font              = font;
                 _titleTmp.text              = titleStr;
-                _titleTmp.fontSize          = h * 0.221f;
+
+                const float minTextScale = 0.6f;
+
+                float titleSize = h * 0.221f;
+                _titleTmp.fontSize          = titleSize;
+                _titleTmp.enableAutoSizing  = true;
+                _titleTmp.fontSizeMax       = titleSize;
+                _titleTmp.fontSizeMin       = titleSize * minTextScale;
                 _titleTmp.color             = Color.white;
                 _titleTmp.richText          = true;
                 _titleTmp.enableWordWrapping = false;
                 _titleTmp.overflowMode      = TextOverflowModes.Ellipsis;
                 _titleTmp.raycastTarget     = false;
 
-                // Subtitle 
+                // Subtitle
                 var subGo = new GameObject("Subtitle");
                 subGo.transform.SetParent(_go.transform, false);
                 var subRt = subGo.AddComponent<RectTransform>();
@@ -283,10 +290,14 @@ namespace BloonsArchipelago.Patches.InMap
                 subRt.offsetMin  = new Vector2(textLeft, pad * 0.25f);
                 subRt.offsetMax  = new Vector2(-rightPad, 0f);
 
+                float subtitleSize = h * 0.169f;
                 _subtitleTmp = subGo.AddComponent<TextMeshProUGUI>();
                 _subtitleTmp.font              = font;
                 _subtitleTmp.text              = notif.From;
-                _subtitleTmp.fontSize          = h * 0.169f;
+                _subtitleTmp.fontSize          = subtitleSize;
+                _subtitleTmp.enableAutoSizing  = true;
+                _subtitleTmp.fontSizeMax       = subtitleSize;
+                _subtitleTmp.fontSizeMin       = subtitleSize * minTextScale;
                 _subtitleTmp.color             = new Color(0.72f, 0.72f, 0.82f, 1f);
                 _subtitleTmp.enableWordWrapping = false;
                 _subtitleTmp.overflowMode       = TextOverflowModes.Ellipsis;
@@ -395,7 +406,8 @@ namespace BloonsArchipelago.Patches.InMap
                 "Filler"       => new Color(0.00f, 0.87f, 1.00f),   // cyan
                 "Chat"         => new Color(0.75f, 0.75f, 0.75f),   // light grey
                 "Progression"      => new Color(0.78f, 0.55f, 1.00f),   // purple
-                "Death"            => new Color(0.65f, 0.10f, 0.10f),   // dark red — DeathLink
+                "Useful"           => new Color(0.20f, 0.40f, 0.85f),   // dark blue
+                "Death"            => new Color(0.65f, 0.10f, 0.10f),   // dark red
                 "Upgrade Path"     => new Color(0.50f, 0.85f, 0.50f),   // light green
                 _              => Color.white,
             };

@@ -66,7 +66,7 @@ namespace BloonsArchipelago.Patches.InMap
 
             if (_beesQueued > 0)
             {
-                _spawnTimer -= Time.deltaTime;
+                _spawnTimer -= Time.unscaledDeltaTime;
                 if (_spawnTimer <= 0f)
                 {
                     SpawnBee();
@@ -170,9 +170,9 @@ namespace BloonsArchipelago.Patches.InMap
         {
             if (_go == null || _rt == null) return true;
 
-            _time += Time.deltaTime;
+            _time += Time.unscaledDeltaTime;
 
-            float x = _rt.anchoredPosition.x + (_leftToRight ? 1f : -1f) * _speed * Time.deltaTime;
+            float x = _rt.anchoredPosition.x + (_leftToRight ? 1f : -1f) * _speed * Time.unscaledDeltaTime;
             float y = _startY + Mathf.Sin(_time * _bobFreq) * _bobAmp;
             _rt.anchoredPosition = new Vector2(x, y);
 

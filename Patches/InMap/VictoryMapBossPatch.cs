@@ -70,7 +70,6 @@ namespace BloonsArchipelago.Patches.InMap
             MelonLogger.Msg($"[VictoryMapBoss] Starting boss event: {bossType} (elite={isElite}) on {inGameData.selectedMap} (seed: {sh.APID}, slot: {sh.PlayerSlotName()})");
 
             var spawnRounds = BossGameData.DefaultSpawnRounds;
-            MelonLogger.Msg($"[VictoryMapBoss] DefaultSpawnRounds={spawnRounds?.Count.ToString() ?? "NULL"}");
 
             VictoryMapBossManager.BossGameStarted = true;
             VictoryMapBossManager.BossActuallyKilled = false;
@@ -158,7 +157,6 @@ namespace BloonsArchipelago.Patches.InMap
             if (VictoryMapBossManager.IsActive)
             {
                 VictoryMapBossManager.BossActuallyKilled = false;
-                MelonLogger.Msg("[VictoryMapBoss] Boss leaked — ensuring BossActuallyKilled is false.");
             }
         }
     }
@@ -234,12 +232,7 @@ namespace BloonsArchipelago.Patches.InMap
             if (isFinalTier)
             {
                 VictoryMapBossManager.BossActuallyKilled = true;
-                MelonLogger.Msg("[VictoryMapBoss] Final boss tier killed — blocking BossDefeated, triggering OnVictory next frame.");
                 MelonCoroutines.Start(TriggerVictoryNextFrame());
-            }
-            else
-            {
-                MelonLogger.Msg("[VictoryMapBoss] Blocking InGame.BossDefeated (non-final tier) — no victory yet.");
             }
             return false;
         }
@@ -249,7 +242,6 @@ namespace BloonsArchipelago.Patches.InMap
             yield return null;
             if (InGame.instance != null)
             {
-                MelonLogger.Msg("[VictoryMapBoss] Calling InGame.OnVictory after final boss tier.");
                 InGame.instance.OnVictory();
             }
         }
@@ -269,9 +261,7 @@ namespace BloonsArchipelago.Patches.InMap
             {
                 var sh = BloonsArchipelago.sessionHandler;
                 double bonus = (sh?.GoalType == 2 ? 5000.0 : 1500.0) - 850.0;
-                MelonLogger.Msg($"[VictoryMapBoss] Calling AddCash({bonus}, 0) GoalType={sh?.GoalType}");
                 BridgeCompat.AddCash(inGame.bridge, bonus, 0);
-                MelonLogger.Msg($"[VictoryMapBoss] AddCash completed successfully");
             }
             catch (Exception ex)
             {
@@ -318,7 +308,6 @@ namespace BloonsArchipelago.Patches.InMap
             if (!VictoryMapBossManager.BossGameStarted || VictoryMapBossManager.AutoStartPending) return true;
 
             VictoryMapBossManager.BossGameStarted = false;
-            MelonLogger.Msg("[VictoryMapBoss] ModeScreen back-out detected — going straight to main menu.");
             MenuManager.instance?.GoToMainMenu();
             return false;
         }
@@ -333,7 +322,6 @@ namespace BloonsArchipelago.Patches.InMap
             if (VictoryMapBossManager.BossGameStarted && !VictoryMapBossManager.AutoStartPending)
             {
                 VictoryMapBossManager.BossGameStarted = false;
-                MelonLogger.Msg("[VictoryMapBoss] Back-out detected — going to main menu.");
                 MenuManager.instance?.GoToMainMenu();
                 return false; 
             }
@@ -342,7 +330,6 @@ namespace BloonsArchipelago.Patches.InMap
             if (sh == null || !sh.BossGoal || !sh.ready || string.IsNullOrEmpty(sh.VictoryMap)) return true;
             if (InGameData.Editable?.selectedMap != sh.VictoryMap) return true;
 
-            MelonLogger.Msg("[VictoryMapBoss] Victory map selected — auto-navigating to game.");
             VictoryMapBossManager.AutoStartPending = true;
             AccessTools.Method(typeof(DifficultySelectScreen), "OpenModeSelectUi")
                 ?.Invoke(__instance, new object[] { "Medium" });

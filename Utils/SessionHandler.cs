@@ -33,6 +33,11 @@ namespace BloonsArchipelago.Utils
         public string lastDeathSender = "";
         public string lastDeathCause = "";
 
+        public bool trapLinkEnabled = false;
+        public bool trapLinkForcedOn = false;
+
+        public HashSet<string> DisabledTraps = new();
+
         public ArchipelagoXP XPTracker;
 
 
@@ -162,6 +167,8 @@ namespace BloonsArchipelago.Utils
         public bool ProgressivePricesEnabled = false;
         public int ProgressivePricesCount = 0;
 
+        public int ProgressiveStartingCashCount = 0;
+
         public bool CategoryLockEnabled = false;
 
         public int ModifiedBloonsRoundsRemaining = 0;
@@ -252,19 +259,7 @@ namespace BloonsArchipelago.Utils
                     string deathTitle = string.IsNullOrEmpty(lastDeathCause)
                         ? lastDeathSender + " died — you die too"
                         : lastDeathCause;
-                    string senderGame = "";
-                    try
-                    {
-                        foreach (var p in session.Players.AllPlayers)
-                        {
-                            if (p.Name == lastDeathSender)
-                            {
-                                senderGame = p.Game ?? "";
-                                break;
-                            }
-                        }
-                    }
-                    catch { }
+                    string senderGame = GetPlayerGame(lastDeathSender);
                     string deathFrom = string.IsNullOrEmpty(senderGame)
                         ? lastDeathSender
                         : lastDeathSender + " (" + senderGame + ")";
@@ -362,142 +357,21 @@ namespace BloonsArchipelago.Utils
                         {
                             ProgressivePricesCount++;
                         }
+                        else if (itemName == "Progressive Starting Cash")
+                        {
+                            ProgressiveStartingCashCount++;
+                        }
                         else if (CategoryTowers.ContainsKey(itemName))
                         {
                             foreach (var tower in CategoryTowers[itemName])
                                 if (!MonkeysUnlocked.Contains(tower))
                                     MonkeysUnlocked.Add(tower);
                         }
-                        else if (itemName == "Modified Bloons")
+                        else if (TrapLink.IsNativeTrap(itemName))
                         {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                ModifiedBloonsRoundsRemaining += 3;
-                            }
-                        }
-                        else if (itemName == "Freeze Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.FreezeTrapManager.PendingFreezeCount++;
-                            }
-                        }
-                        else if (itemName == "Speed Up Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                MelonLoader.MelonLogger.Msg("[SpeedUp] Queued PendingSpeedUpCount++");
-                                Patches.InMap.SpeedUpTrapManager.PendingSpeedUpCount++;
-                            }
-                            else
-                            {
-                                MelonLoader.MelonLogger.Msg("[SpeedUp] Skipped — InGame.instance is null");
-                            }
-                        }
-                        else if (itemName == "Bee Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.BeeTrapManager.PendingBeeCount++;
-                            }
-                        }
-                        else if (itemName == "Literature Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.LiteratureTrapManager.PendingLiteratureCount++;
-                            }
-                        }
-                        else if (itemName == "144p Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.ResolutionTrapManager.PendingResolutionTrapCount++;
-                            }
-                        }
-                        else if (itemName == "Math Quiz Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.MathQuizTrapManager.PendingMathQuizCount++;
-                            }
-                        }
-                        else if (itemName == "Input Sequence Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.InputSequenceTrapManager.PendingInputSequenceCount++;
-                            }
-                        }
-                        else if (itemName == "Swap Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.SwapTrapManager.PendingSwapCount++;
-                            }
-                        }
-                        else if (itemName == "Flood Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.FloodTrapManager.PendingFloodCount++;
-                            }
-                        }
-                        else if (itemName == "Shuffle Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.ShuffleTrapManager.PendingShuffleCount++;
-                            }
-                        }
-                        else if (itemName == "Zoom Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.ZoomTrapManager.PendingZoomCount++;
-                            }
-                        }
-                        else if (itemName == "Screen Flip Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.ScreenFlipTrapManager.PendingScreenFlipCount++;
-                            }
-                        }
-                        else if (itemName == "Chaos Control Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.ChaosTrapManager.PendingChaosCount++;
-                            }
-                        }
-                        else if (itemName == "Trivia Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.TriviaTrapManager.PendingTriviaCount++;
-                            }
-                        }
-                        else if (itemName == "Pokemon Trivia Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.PokemonTriviaTrapManager.PendingPokemonTriviaCount++;
-                            }
-                        }
-                        else if (itemName == "Number Sequence Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.NumberSequenceTrapManager.PendingNumberSequenceCount++;
-                            }
-                        }
-                        else if (itemName == "Yap Trap")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.YapTrapManager.PendingYapCount++;
-                            }
+                            // Only link traps that went off here and are new, so replayed items are never re-broadcast.
+                            if (QueueTrap(itemName) && isNew && trapLinkEnabled)
+                                SendTrapLink(itemName);
                         }
                         else if (itemName == "Monkey Boost")
                         {
@@ -721,6 +595,29 @@ namespace BloonsArchipelago.Utils
                 deathLinkForcedOn = true;
             ApplyDeathLinkToggle(deathLinkForcedOn || BloonsArchipelago.DeathLinkSetting);
 
+            if (slotData.ContainsKey("options") && slotData["options"] is Newtonsoft.Json.Linq.JObject slotOptions
+                && slotOptions["trap_weights"] is Newtonsoft.Json.Linq.JObject trapWeights)
+            {
+                foreach (var kv in trapWeights)
+                {
+                    try
+                    {
+                        if ((int)kv.Value <= 0)
+                            DisabledTraps.Add(kv.Key);
+                    }
+                    catch { }
+                }
+            }
+
+            session.Socket.PacketReceived += (packet) =>
+            {
+                if (packet is BouncedPacket bounced)
+                    HandleTrapLinkBounce(bounced);
+            };
+            if (slotData.ContainsKey("trapLink") && (bool)slotData["trapLink"])
+                trapLinkForcedOn = true;
+            ApplyTrapLinkToggle(trapLinkForcedOn || BloonsArchipelago.TrapLinkSetting);
+
             ModHelper.Msg<BloonsArchipelago>(MedalRequirement + " Medals Required to Unlock " + VictoryMap);
 
             LoadProgress();
@@ -832,6 +729,7 @@ namespace BloonsArchipelago.Utils
             Medals = 0;
             ProgressiveKnowledgeCount = 0;
             ProgressivePricesCount = 0;
+            ProgressiveStartingCashCount = 0;
 
             foreach (var item in session.Items.AllItemsReceived)
             {
@@ -846,6 +744,8 @@ namespace BloonsArchipelago.Utils
                     ProgressiveKnowledgeCount++;
                 else if (itemName == "Progressive Prices")
                     ProgressivePricesCount++;
+                else if (itemName == "Progressive Starting Cash")
+                    ProgressiveStartingCashCount++;
                 else if (CategoryTowers.ContainsKey(itemName))
                 {
                     foreach (var tower in CategoryTowers[itemName])
@@ -972,6 +872,8 @@ namespace BloonsArchipelago.Utils
             deathLinkForcedOn = false;
             PendingRemoteDeath = false;
             _receivingRemoteDeath = false;
+            trapLinkEnabled = false;
+            trapLinkForcedOn = false;
         }
 
         public string PlayerSlotName()
@@ -979,6 +881,149 @@ namespace BloonsArchipelago.Utils
             int slot = session.ConnectionInfo.Slot;
             string name = session.Players.GetPlayerName(slot);
             return name;
+        }
+
+        private string GetPlayerGame(string playerName)
+        {
+            try
+            {
+                foreach (var p in session.Players.AllPlayers)
+                {
+                    if (p.Name == playerName)
+                        return p.Game ?? "";
+                }
+            }
+            catch { }
+            return "";
+        }
+
+        public void ApplyTrapLinkToggle(bool enabled)
+        {
+            if (!ready || session == null) return;
+            if (trapLinkForcedOn) enabled = true;
+            if (enabled == trapLinkEnabled) return;
+            try
+            {
+                var tags = new List<string>(session.ConnectionInfo.Tags ?? Array.Empty<string>());
+                tags.Remove(TrapLink.Tag);
+                if (enabled)
+                    tags.Add(TrapLink.Tag);
+                session.ConnectionInfo.UpdateConnectionOptions(tags.ToArray());
+                trapLinkEnabled = enabled;
+                MelonLogger.Msg(enabled ? "[BloonsArchipelago] Trap Link enabled." : "[BloonsArchipelago] Trap Link disabled.");
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[BloonsArchipelago] Trap Link toggle failed: {ex.Message}");
+            }
+        }
+
+        private bool QueueTrap(string trapName)
+        {
+            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance == null) return false;
+
+            switch (trapName)
+            {
+                case "Modified Bloons":      ModifiedBloonsRoundsRemaining += 3; break;
+                case "Freeze Trap":          Patches.InMap.FreezeTrapManager.PendingFreezeCount++; break;
+                case "Speed Up Trap":        Patches.InMap.SpeedUpTrapManager.PendingSpeedUpCount++; break;
+                case "Bee Trap":             Patches.InMap.BeeTrapManager.PendingBeeCount++; break;
+                case "Literature Trap":      Patches.InMap.LiteratureTrapManager.PendingLiteratureCount++; break;
+                case "144p Trap":            Patches.InMap.ResolutionTrapManager.PendingResolutionTrapCount++; break;
+                case "Math Quiz Trap":       Patches.InMap.MathQuizTrapManager.PendingMathQuizCount++; break;
+                case "Input Sequence Trap":  Patches.InMap.InputSequenceTrapManager.PendingInputSequenceCount++; break;
+                case "Swap Trap":            Patches.InMap.SwapTrapManager.PendingSwapCount++; break;
+                case "Flood Trap":           Patches.InMap.FloodTrapManager.PendingFloodCount++; break;
+                case "Shuffle Trap":         Patches.InMap.ShuffleTrapManager.PendingShuffleCount++; break;
+                case "Zoom Trap":            Patches.InMap.ZoomTrapManager.PendingZoomCount++; break;
+                case "Screen Flip Trap":     Patches.InMap.ScreenFlipTrapManager.PendingScreenFlipCount++; break;
+                case "Chaos Control Trap":   Patches.InMap.ChaosTrapManager.PendingChaosCount++; break;
+                case "Trivia Trap":          Patches.InMap.TriviaTrapManager.PendingTriviaCount++; break;
+                case "Pokemon Trivia Trap":  Patches.InMap.PokemonTriviaTrapManager.PendingPokemonTriviaCount++; break;
+                case "Number Sequence Trap": Patches.InMap.NumberSequenceTrapManager.PendingNumberSequenceCount++; break;
+                case "Yap Trap":             Patches.InMap.YapTrapManager.PendingYapCount++; break;
+                default: return false;
+            }
+            return true;
+        }
+
+        private static readonly System.Reflection.PropertyInfo _bounceDataProperty = typeof(BouncePacket).GetProperty("Data");
+        private static readonly System.Reflection.PropertyInfo _bouncedDataProperty = typeof(BouncedPacket).GetProperty("Data");
+
+        private void SendTrapLink(string trapName)
+        {
+            try
+            {
+                var packet = new BouncePacket { Tags = new List<string> { TrapLink.Tag } };
+                _bounceDataProperty.SetValue(packet, new Dictionary<string, Newtonsoft.Json.Linq.JToken>
+                {
+                    ["time"]      = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0,
+                    ["source"]    = PlayerSlotName(),
+                    ["trap_name"] = trapName,
+                });
+                Task.Run(() =>
+                {
+                    try
+                    {
+                        session.Socket.SendPacket(packet);
+                        MelonLogger.Msg("[BloonsArchipelago] Trap Link sent: " + trapName);
+                    }
+                    catch (Exception ex)
+                    {
+                        MelonLogger.Warning($"[BloonsArchipelago] Trap Link send failed: {ex.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[BloonsArchipelago] Trap Link send failed: {ex.Message}");
+            }
+        }
+
+        private void HandleTrapLinkBounce(BouncedPacket bounced)
+        {
+            try
+            {
+                if (!trapLinkEnabled || bounced.Tags == null || !bounced.Tags.Contains(TrapLink.Tag)) return;
+                if (_bouncedDataProperty.GetValue(bounced) is not System.Collections.IDictionary data) return;
+
+                string trapName = data["trap_name"]?.ToString();
+                string source = data["source"]?.ToString();
+                if (string.IsNullOrEmpty(trapName) || string.IsNullOrEmpty(source)) return;
+                if (source == PlayerSlotName()) return;
+
+                bool activated = false;
+                string outcome;
+                if (!TrapLink.TryGetNativeTrap(trapName, out string nativeTrap))
+                    outcome = "ignored (no matching Bloons trap)";
+                else if (DisabledTraps.Contains(nativeTrap))
+                    outcome = "ignored (" + nativeTrap + " is weighted 0 in your YAML)";
+                else if (!QueueTrap(nativeTrap))
+                    outcome = "discarded (not in a match)";
+                else
+                {
+                    activated = true;
+                    outcome = "activated as " + nativeTrap;
+                }
+                MelonLogger.Msg($"[BloonsArchipelago] Trap Link received {trapName} from {source}: {outcome}");
+                if (!activated) return;
+
+                string senderGame = GetPlayerGame(source);
+                string from = string.IsNullOrEmpty(senderGame) ? source : source + " (" + senderGame + ")";
+                notifications.Enqueue(new APNotification
+                {
+                    Category = "Trap",
+                    ItemName = string.Equals(trapName, nativeTrap, StringComparison.OrdinalIgnoreCase)
+                        ? nativeTrap
+                        : nativeTrap + " (" + trapName + ")",
+                    From     = "Trap Link from " + from,
+                    FullText = "Trap Link from " + from + ": " + trapName,
+                });
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[BloonsArchipelago] Trap Link receive failed: {ex.Message}");
+            }
         }
 
         private static string GetItemCategory(string itemName)
@@ -990,26 +1035,10 @@ namespace BloonsArchipelago.Utils
             if (itemName.EndsWith("-TopPath") || itemName.EndsWith("-MiddlePath") || itemName.EndsWith("-BottomPath")) return "Upgrade Path";
             if (itemName == "Progressive Knowledge") return "Progression";
             if (itemName == "Progressive Prices")    return "Progression";
+            if (itemName == "Progressive Starting Cash") return "Useful";
             if (itemName == "Medal")                 return "Medal";
             if (CategoryTowers.ContainsKey(itemName)) return "Tower Unlock";
-            if (itemName == "Modified Bloons"        ||
-                itemName == "Freeze Trap"            ||
-                itemName == "Speed Up Trap"          ||
-                itemName == "Bee Trap"               ||
-                itemName == "Literature Trap"        ||
-                itemName == "144p Trap"              ||
-                itemName == "Flood Trap"             ||
-                itemName == "Swap Trap"              ||
-                itemName == "Shuffle Trap"           ||
-                itemName == "Zoom Trap"              ||
-                itemName == "Screen Flip Trap"       ||
-                itemName == "Chaos Control Trap"     ||
-                itemName == "Math Quiz Trap"         ||
-                itemName == "Trivia Trap"            ||
-                itemName == "Pokemon Trivia Trap"    ||
-                itemName == "Number Sequence Trap"   ||
-                itemName == "Input Sequence Trap"    ||
-                itemName == "Yap Trap") return "Trap";
+            if (TrapLink.IsNativeTrap(itemName)) return "Trap";
             if (itemName == "Monkey Boost"  ||
                 itemName == "Monkey Storm"  ||
                 itemName == "Cash Drop"     ||

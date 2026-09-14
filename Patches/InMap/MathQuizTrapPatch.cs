@@ -113,7 +113,6 @@ namespace BloonsArchipelago.Patches.InMap
 
             BuildOverlay(equation, header, headerColor, optionLabels);
             _state = QuizState.Question;
-            MelonLogger.Msg($"[MathQuiz] \"{equation}\"  answer={correctAnswerText}  time={timeLimit}s");
         }
 
         private static void TickQuestion()

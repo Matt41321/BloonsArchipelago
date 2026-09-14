@@ -104,7 +104,6 @@ namespace BloonsArchipelago.Patches.InMap
             {
                 _state = QuizState.Question;
             }
-            MelonLogger.Msg($"[{_logTag}] \"{q.Prompt}\"  answer={_correctAnswerText}  time={q.TimeLimit}s");
         }
 
         public void Update()

@@ -50,8 +50,6 @@ namespace BloonsArchipelago.Patches.InMap
                 .OrderBy(n => n)
                 .ToArray();
 
-            MelonLogger.Msg($"[MonkeyBoost] Found {frameNames.Length} frame(s): {string.Join(", ", frameNames)}");
-
             var sprites = new List<Sprite>();
             foreach (var name in frameNames)
             {
@@ -160,7 +158,6 @@ namespace BloonsArchipelago.Patches.InMap
             var inGame = InGame.instance;
             if (inGame == null) return;
             var towers = inGame.GetTowers();
-            MelonLogger.Msg($"[MonkeyBoost] BoostAllTowers — found {towers.Count} towers");
             foreach (var tower in towers)
             {
                 try { if (tower != null) BoostSingleTower(tower); }
@@ -257,7 +254,6 @@ namespace BloonsArchipelago.Patches.InMap
                 img.color = new Color(1f, 1f, 1f, 0.5f);
 
                 _overlays[id] = new TowerOverlay { go = overlayGo, rt = rt, img = img, worldPos = worldPos };
-                MelonLogger.Msg($"[MonkeyBoost] Overlay created at screen ({screenPos.x:F0},{screenPos.y:F0}) world {worldPos}");
             }
             catch (Exception ex)
             {

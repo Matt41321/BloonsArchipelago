@@ -9,8 +9,6 @@ namespace BloonsArchipelago.Patches.MapMenu
     [HarmonyPatch(typeof(ModeButton), nameof(ModeButton.Update))]
     internal class AllModesUnlocked
     {
-        private static readonly HashSet<string> _loggedButtons = new();
-
         [HarmonyPrefix]
         public static bool Prefix(ModeButton __instance)
         {
@@ -37,10 +35,6 @@ namespace BloonsArchipelago.Patches.MapMenu
             }
             else if (sh.GoalType == 0 && !string.IsNullOrEmpty(sh.VictoryMap) && sh.currentMap == sh.VictoryMap)
             {
-                string logKey = $"{sh.currentMap}|{modeType}";
-                if (_loggedButtons.Add(logKey))
-                    MelonLogger.Msg($"[VictoryMapLock] currentMap={sh.currentMap} VictoryMap={sh.VictoryMap} GoalMode={sh.GoalMode} GoalType={sh.GoalType} modeType={modeType} CurrentTier={DifficultyLockPatch.CurrentTier}");
-
                 string apMode = modeType == "Standard"
                     ? DifficultyLockPatch.CurrentTier
                     : Utils.SessionHandler.GameModeToApMode(modeType);

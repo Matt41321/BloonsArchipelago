@@ -134,8 +134,6 @@ namespace BloonsArchipelago.Patches.InMap
                         found.Add(clip);
                 }
                 _clips = found.ToArray();
-                if (_clips.Length > 0)
-                    MelonLogger.Msg($"[YapTrap] Found Quincy clips: {string.Join(", ", found.Select(c => c.name))}");
             }
             catch (Exception ex)
             {

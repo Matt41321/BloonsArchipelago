@@ -32,7 +32,6 @@ namespace BloonsArchipelago.Patches.MapMenu
             if (allMaps != null && SessionHandler.defaultMapList != null
                 && allMaps.Length > SessionHandler.defaultMapList.Length)
             {
-                MelonLogger.Msg($"[BloonsArchipelago] Refreshing map snapshot from GameData ({allMaps.Length} maps, was {SessionHandler.defaultMapList.Length}).");
                 SessionHandler.defaultMapList = allMaps;
                 SessionHandler.RebuildValidMapIds();
             }

@@ -1,4 +1,4 @@
-using MelonLoader;
+﻿using MelonLoader;
 using BTD_Mod_Helper;
 
 using BloonsArchipelago;
@@ -114,6 +114,13 @@ public class BloonsArchipelago : BloonsTD6Mod
         onValueChanged = new System.Action<bool>(v => sessionHandler?.ApplyDeathLinkToggle(v)),
     };
     public static bool DeathLinkSetting => deathLink;
+    static readonly ModSettingBool trapLink = new(false)
+    {
+        displayName = "Trap Link",
+        description = "Share the traps you receive with all Trap Link-enabled players in the MultiWorld, and receive theirs. Traps weighted 0 in your YAML are ignored.",
+        onValueChanged = new System.Action<bool>(v => sessionHandler?.ApplyTrapLinkToggle(v)),
+    };
+    public static bool TrapLinkSetting => trapLink;
 
     public override void OnApplicationStart()
     {
@@ -234,12 +241,12 @@ public class BloonsArchipelago : BloonsTD6Mod
             case "HalfCash":
             case "AlternateBloonsRounds":
                 return 1.08f;
-            // CHIMPS (1.08x — Hard pricing)
+            // CHIMPS (1.08x - Hard pricing)
             case "Clicks":
                 return 1.08f;
             // Impoppable tier (1.20x)
             case "Impoppable":
-                return 1.20f;
+                return 1.296f;
         }
 
         // Fall back to difficulty name
@@ -247,31 +254,20 @@ public class BloonsArchipelago : BloonsTD6Mod
         {
             "Easy" => 0.85f,
             "Hard" => 1.08f,
-            "Impoppable" => 1.20f,
+            "Impoppable" => 1.296f,
             _ => 1.00f,
         };
     }
 
     private static float DetectCurrentMultiplier(GameModel gameModel, string mode)
     {
-
-        if (mode != "Standard")
-            return GetDifficultyMultiplier("", mode);
-
-
         foreach (var tower in gameModel.towers)
         {
             if (tower.name == "DartMonkey")
-            {
-                float cost = tower.cost;
-                if (cost <= 175) return 0.85f;
-                if (cost <= 210) return 1.00f;
-                if (cost <= 230) return 1.08f;
-                return 1.20f;
-            }
+                return tower.cost / 200f;
         }
 
-        return 1.00f;
+        return GetDifficultyMultiplier("", mode);
     }
 
     public override void OnNewGameModel(GameModel gameModel)
@@ -281,6 +277,12 @@ public class BloonsArchipelago : BloonsTD6Mod
         if (InGameData.CurrentGame?.gameEventId == Patches.InMap.VictoryMapBossManager.EventId)
             gameModel.endRound = 140;
 
+        if (sessionHandler.ready && sessionHandler.ProgressiveStartingCashCount > 0)
+        {
+            float bonus = 150f * sessionHandler.ProgressiveStartingCashCount;
+            gameModel.cash += bonus;
+        }
+
         if (!sessionHandler.ready || !sessionHandler.ProgressivePricesEnabled) return;
 
         float[] targets = { 1.20f, 1.08f, 1.00f, 0.85f };
@@ -289,21 +291,13 @@ public class BloonsArchipelago : BloonsTD6Mod
         string mode = sessionHandler.currentMode ?? "";
         float current = DetectCurrentMultiplier(gameModel, mode);
 
-        ModHelper.Msg<BloonsArchipelago>($"Progressive Prices: currentMode=\"{mode}\", target={target:F2}x, detected={current:F2}x");
-
         float ratio = target / current;
-        if (System.Math.Abs(ratio - 1.0f) < 0.001f)
-        {
-            ModHelper.Msg<BloonsArchipelago>($"Progressive Prices: no adjustment needed (ratio={ratio:F3})");
-            return;
-        }
+        if (System.Math.Abs(ratio - 1.0f) < 0.001f) return;
 
         foreach (var tower in gameModel.towers)
             tower.cost = (int)System.Math.Round(tower.cost * ratio);
         foreach (var upgrade in gameModel.upgrades)
             upgrade.cost = (int)System.Math.Round(upgrade.cost * ratio);
-
-        ModHelper.Msg<BloonsArchipelago>($"Progressive Prices: applied ratio {ratio:F3} (target {target:F2}x / detected {current:F2}x)");
     }
 
     private static bool _xpTableDumped = false;
@@ -330,7 +324,6 @@ public class BloonsArchipelago : BloonsTD6Mod
                 ModContent.GetInstance<BloonsArchipelago>().GetModDirectory(),
                 "btd6_xp_table.json");
             System.IO.File.WriteAllText(path, sb.ToString());
-            ModHelper.Msg<BloonsArchipelago>($"XP table written to {path}");
         }
         catch (System.Exception ex)
         {
@@ -366,6 +359,7 @@ public class BloonsArchipelago : BloonsTD6Mod
             Patches.InMap.LiteratureTrapManager.CleanupAll();
             Patches.InMap.ResolutionTrapManager.CleanupAll();
             Patches.InMap.MonkeyBoostManager.CleanupAll();
+            Patches.InMap.PathDiamondOverlayManager.CleanupAll();
             Patches.InMap.MonkeyStormManager.CleanupAll();
             Patches.InMap.CashDropManager.CleanupAll();
             Patches.InMap.ThriveManager.CleanupAll();
@@ -392,7 +386,6 @@ public class BloonsArchipelago : BloonsTD6Mod
                 if (modeScreen != null)
                 {
                     Patches.InMap.VictoryMapBossManager.AutoStartPending = false;
-                    MelonLogger.Msg("[VictoryMapBoss] Auto-selecting Standard mode to start game.");
                     modeScreen.OnModeSelected("Standard", false);
                 }
             }
@@ -434,6 +427,7 @@ public class BloonsArchipelago : BloonsTD6Mod
             Patches.InMap.VictoryMapBossStartingCashPatch.TryGiveCash();
 
         Patches.InMap.PopTierLockPatch.UpdateButtonDisplays();
+        Patches.InMap.PathDiamondOverlayManager.UpdateOverlays();
     }
 
     private static void ProcessNotifications()

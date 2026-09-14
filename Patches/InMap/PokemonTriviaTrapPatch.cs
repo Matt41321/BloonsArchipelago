@@ -159,7 +159,6 @@ namespace BloonsArchipelago.Patches.InMap
 
             BuildOverlay(q);
             _state = State.Question;
-            MelonLogger.Msg($"[PokemonTrivia] \"{q}\"  answer={_correctName}  options=[{string.Join(", ", _options)}]");
         }
 
         private static void TickQuestion()
@@ -448,7 +447,6 @@ namespace BloonsArchipelago.Patches.InMap
                 string baseName = dot >= 0 ? noExt.Substring(dot + 1) : noExt;
                 _resByName[baseName] = n;
             }
-            MelonLogger.Msg($"[PokemonTrivia] Mapped {_resByName.Count} pkmns sprite(s).");
         }
 
         private static TMP_FontAsset GetFont()

@@ -110,9 +110,6 @@ namespace BloonsArchipelago.Patches.InMap
             _timeLeft = TIME_LIMIT;
             BuildOverlay();
             _state = SeqState.Question;
-
-            string seq = string.Join(" ", System.Array.ConvertAll(_sequence, d => Symbols[d]));
-            MelonLogger.Msg($"[InputSeq] Sequence: {seq}");
         }
 
         private static void TickQuestion()

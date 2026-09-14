@@ -48,23 +48,19 @@ namespace BloonsArchipelago.Patches.InMap
             try
             {
                 var allFonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
-                MelonLogger.Msg($"[LiteratureTrap] Found {allFonts.Length} TMP fonts");
                 foreach (var f in allFonts)
                 {
                     if (f == null) continue;
-                    MelonLogger.Msg($"[LiteratureTrap]   font: {f.name}");
                     if (f.name.Contains("LuckiestGuy") || f.name.Contains("Luckiest") ||
                         f.name.ToLower().Contains("btd") || f.name.ToLower().Contains("bloons"))
                     {
                         _cachedFont = f;
-                        MelonLogger.Msg($"[LiteratureTrap] Using font: {f.name}");
                         return _cachedFont;
                     }
                 }
                 if (allFonts.Length > 0 && allFonts[0] != null)
                 {
                     _cachedFont = allFonts[0];
-                    MelonLogger.Msg($"[LiteratureTrap] Fallback font: {_cachedFont.name}");
                 }
             }
             catch (Exception ex)
@@ -87,8 +83,6 @@ namespace BloonsArchipelago.Patches.InMap
 
             var scaler = _canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
-
-            MelonLogger.Msg($"[LiteratureTrap] Canvas created. Screen={Screen.width}x{Screen.height}");
         }
 
         public static void Update()
@@ -114,10 +108,8 @@ namespace BloonsArchipelago.Patches.InMap
                 EnsureCanvas();
                 string passage = _passages[_rng.Next(_passages.Length)];
                 var font = GetFont();
-                MelonLogger.Msg($"[LiteratureTrap] Creating scroll, font={(font != null ? font.name : "null")}");
                 var scroll = new LiteratureScroll(_canvasGo, passage, font);
                 _scrolls.Add(scroll);
-                MelonLogger.Msg($"[LiteratureTrap] Scroll added. Count={_scrolls.Count}");
             }
             catch (Exception ex)
             {
@@ -189,7 +181,6 @@ namespace BloonsArchipelago.Patches.InMap
                 tmp.enableWordWrapping = true;
                 tmp.overflowMode = TextOverflowModes.Overflow;
                 tmp.raycastTarget = false;
-                MelonLogger.Msg("[LiteratureTrap] TextMeshProUGUI added (with font)");
             }
             else
             {
@@ -204,7 +195,6 @@ namespace BloonsArchipelago.Patches.InMap
                 var outline = _go.AddComponent<Outline>();
                 outline.effectColor = new Color(0f, 0f, 0f, 1f);
                 outline.effectDistance = new Vector2(2f, -2f);
-                MelonLogger.Msg("[LiteratureTrap] UI.Text fallback added (no TMP font)");
             }
         }
 
@@ -212,7 +202,7 @@ namespace BloonsArchipelago.Patches.InMap
         {
             if (_go == null) return true;
 
-            _time += Time.deltaTime;
+            _time += Time.unscaledDeltaTime;
             float t = _time / DURATION;
             float y = Mathf.Lerp(_startY, _endY, t);
             _rt.anchoredPosition = new Vector2(0f, y);
