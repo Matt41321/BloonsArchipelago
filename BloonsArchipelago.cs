@@ -359,7 +359,7 @@ public class BloonsArchipelago : BloonsTD6Mod
             Patches.InMap.LiteratureTrapManager.CleanupAll();
             Patches.InMap.ResolutionTrapManager.CleanupAll();
             Patches.InMap.MonkeyBoostManager.CleanupAll();
-            Patches.InMap.PathDiamondOverlayManager.CleanupAll();
+            Patches.InMap.UpgradeSanityDisplayManager.CleanupAll();
             Patches.InMap.MonkeyStormManager.CleanupAll();
             Patches.InMap.CashDropManager.CleanupAll();
             Patches.InMap.ThriveManager.CleanupAll();

@@ -13,7 +13,7 @@ using Object = UnityEngine.Object;
 
 namespace BloonsArchipelago.Patches.InMap
 {
-    internal static class PathDiamondOverlayManager
+    internal static class UpgradeSanityDisplayManager
     {
         private const float UPDATE_INTERVAL = 0.5f;
 
@@ -60,14 +60,14 @@ namespace BloonsArchipelago.Patches.InMap
         {
             var buttonGo = button.gameObject;
             int layer = buttonGo.layer;
-            var rootRt = CreateStretchedChild("APPathDiamonds", buttonGo.transform, layer,
+            var rootRt = CreateStretchedChild("APPathBadges", buttonGo.transform, layer,
                 new Vector2(0.03f, 0f), new Vector2(0.26f, 1f));
             rootRt.SetAsLastSibling();
 
             var badges = new Image[3];
             for (int i = 0; i < 3; i++)
             {
-                var rt = CreateStretchedChild($"{PathNames[i]}Diamond", rootRt, layer,
+                var rt = CreateStretchedChild($"{PathNames[i]}Badge", rootRt, layer,
                     new Vector2(0f, BadgeBands[i].min), new Vector2(1f, BadgeBands[i].max));
 
                 var img = rt.gameObject.AddComponent<Image>();
@@ -141,6 +141,10 @@ namespace BloonsArchipelago.Patches.InMap
 
                 foreach (var p in _overlays.Keys.Where(p => !seen.Contains(p)).ToList())
                     DestroyOverlay(p);
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[UpgradeSanityDisplay] Update error: {ex.Message}");
             }
         }
 
