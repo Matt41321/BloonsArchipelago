@@ -427,7 +427,7 @@ public class BloonsArchipelago : BloonsTD6Mod
             Patches.InMap.VictoryMapBossStartingCashPatch.TryGiveCash();
 
         Patches.InMap.PopTierLockPatch.UpdateButtonDisplays();
-        Patches.InMap.PathDiamondOverlayManager.UpdateOverlays();
+        Patches.InMap.UpgradeSanityDisplayManager.UpdateOverlays();
     }
 
     private static void ProcessNotifications()
