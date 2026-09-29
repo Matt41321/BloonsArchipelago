@@ -1,19 +1,11 @@
-# Bloons AP v(0.10.0/0.8.0) (Mod/APWorld)
+# Bloons AP v(0.10.1/0.8.2) (Mod/APWorld)
 
 ## Added
-- Full Trap link support
-- Progressive Starting Cash
-- Upgrade Sanity Inventory Display
-- Upgrade Sanity logic implemented
-
-## Changes
-- Tweaked map tower requirement logic
-- Reworked Starting Monkey option
+- New option for knowledge behaviour
+- Auto-reconnect if connection is dropped with checks you collect while disconnected sending on reconnect
 
 ## Fixes
-- Quiz Traps no longer show the answer in the console...
-- Maps without water no longer expect you to use water towers
-- Bee and Literature Trap are now based off real time, don't get affected by in-game speed-up
-- Fixed notifications that were too long getting cut-off
+- Pop tier checks now send on tier purchase instead of unlock
+- Fixed Ascent and Skull Peak not being options in blacklist/whitelist
 
 For setup information please check the Readme
