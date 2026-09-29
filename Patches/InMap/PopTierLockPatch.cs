@@ -4,6 +4,7 @@ using Il2CppAssets.Scripts.Unity.UI_New.InGame;
 using BTD_Mod_Helper.Extensions;
 using BloonsArchipelago.Utils;
 using UnityEngine;
+using System.Collections.Generic;
 using TSM = Il2CppAssets.Scripts.Unity.UI_New.InGame.TowerSelectionMenu.TowerSelectionMenu;
 
 namespace BloonsArchipelago.Patches.InMap
@@ -52,8 +53,6 @@ namespace BloonsArchipelago.Patches.InMap
                 else
                 {
                     sh.PermanentlyUnlockedTiers.Add(unlockKey);
-                    if (!sh.LocationChecked(unlockKey))
-                        sh.CompleteCheck(unlockKey);
                     sh.SaveProgress();
                 }
             }
@@ -95,6 +94,84 @@ namespace BloonsArchipelago.Patches.InMap
             tier == 2 ? sh.Tier3PopRequirement
           : tier == 3 ? sh.Tier4PopRequirement
           : sh.Tier5PopRequirement;
+
+        public static void OnTowerUpgraded(string baseId, int[] tiers)
+        {
+            try
+            {
+                var sh = BloonsArchipelago.sessionHandler;
+                if (sh == null || !sh.ready || !sh.PopTierChecksEnabled) return;
+                if (string.IsNullOrEmpty(baseId) || baseId == VILLAGE || tiers == null) return;
+
+                bool changed = false;
+                foreach (int pathTier in tiers)
+                {
+                    for (int tier = 3; tier <= System.Math.Min(pathTier, 5); tier++)
+                    {
+                        string checkKey = $"{baseId}-Tier{tier}";
+                        if (sh.PurchasedTiers.Add(checkKey)) changed = true;
+                        if (!sh.LocationChecked(checkKey))
+                            sh.CompleteCheck(checkKey);
+                    }
+                }
+                if (changed) sh.SaveProgress();
+            }
+            catch { }
+        }
+
+        public static void ResyncChecks()
+        {
+            try
+            {
+                var sh = BloonsArchipelago.sessionHandler;
+                if (sh == null || !sh.ready || !sh.PopTierChecksEnabled) return;
+
+                var baseIds = new HashSet<string>(sh.CumulativePops.Keys);
+                try
+                {
+                    var inGame = InGame.instance;
+                    if (inGame != null)
+                    {
+                        foreach (var t in inGame.GetTowers())
+                        {
+                            try
+                            {
+                                string id = t?.towerModel?.baseId;
+                                if (!string.IsNullOrEmpty(id)) baseIds.Add(id);
+                            }
+                            catch { }
+                        }
+                    }
+                }
+                catch { }
+
+                bool changed = false;
+                foreach (string baseId in baseIds)
+                {
+                    if (baseId == VILLAGE) continue;
+                    long total = GetAggregateProgress(baseId);
+                    for (int tier = 2; tier <= 4; tier++)
+                    {
+                        string unlockKey = $"{baseId}-Tier{tier + 1}";
+                        if (sh.PermanentlyUnlockedTiers.Contains(unlockKey)) continue;
+                        if (total < GetRequired(sh, tier)) continue;
+                        sh.PermanentlyUnlockedTiers.Add(unlockKey);
+                        changed = true;
+                    }
+                }
+
+                int sent = 0;
+                foreach (string checkKey in sh.PurchasedTiers)
+                {
+                    if (sh.LocationChecked(checkKey)) continue;
+                    sh.CompleteCheck(checkKey);
+                    sent++;
+                }
+
+                if (changed) sh.SaveProgress();
+            }
+            catch { }
+        }
 
         public static void UpdateButtonDisplays()
         {
@@ -173,8 +250,6 @@ namespace BloonsArchipelago.Patches.InMap
                         else if (total >= required)
                         {
                             sh.PermanentlyUnlockedTiers.Add(unlockKey);
-                            if (!sh.LocationChecked(unlockKey))
-                                sh.CompleteCheck(unlockKey);
                             sh.SaveProgress();
                             needsRefresh = true;
                         }

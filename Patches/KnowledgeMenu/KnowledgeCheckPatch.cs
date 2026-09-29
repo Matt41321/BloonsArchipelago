@@ -16,7 +16,8 @@ namespace BloonsArchipelago.Patches.KnowledgeMenu
         {
             if (BloonsArchipelago.sessionHandler.ready)
             {
-                BloonsArchipelago.sessionHandler.CompleteCheck(__instance.currSelectedBtn.knowledgeID + "-Tree");
+                if (!BloonsArchipelago.sessionHandler.KnowledgeAutoActivates)
+                    BloonsArchipelago.sessionHandler.CompleteCheck(__instance.currSelectedBtn.knowledgeID + "-Tree");
                 __instance.currSelectedBtn.SetState(KnowlegdeSkillBtnState.Purchased);
                 return false;
             }

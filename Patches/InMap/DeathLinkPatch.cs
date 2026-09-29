@@ -37,7 +37,7 @@ namespace BloonsArchipelago.Patches.InMap
                 return;
             }
 
-            if (!sh.deathLinkEnabled || sh.deathLinkService == null) return;
+            if (!sh.Connected || !sh.deathLinkEnabled || sh.deathLinkService == null) return;
 
             try
             {

@@ -22,7 +22,7 @@ namespace BloonsArchipelago.Patches.KnowledgeMenu
                 return;
             }
 
-            if (sh.ProgressiveKnowledgeMode)
+            if (sh.KnowledgeAutoActivates)
             {
                 state = KnowlegdeSkillBtnState.Purchased;
             }

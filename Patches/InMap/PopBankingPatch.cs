@@ -14,7 +14,7 @@ namespace BloonsArchipelago.Patches.InMap
             try
             {
                 var sh = BloonsArchipelago.sessionHandler;
-                if (sh == null || !sh.ready || !sh.PopTierChecksEnabled) return;
+                if (sh == null || sh.session == null || !sh.PopTierChecksEnabled) return;
 
                 var inGame = InGame.instance;
                 if (inGame == null) return;

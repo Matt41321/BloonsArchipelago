@@ -24,6 +24,17 @@ namespace BloonsArchipelago.Utils
     {
         public ArchipelagoSession session;
         public bool ready = false;
+        public volatile bool ConnectionLost = false;
+        private volatile bool _userDisconnected = false;
+        private readonly object _connectionLostLock = new();
+        public bool Connected => ready && !ConnectionLost;
+
+        private readonly object _syncLock = new();
+        private int _syncedItemCount = 0;
+
+        private readonly ConcurrentDictionary<long, byte> _attemptedChecks = new();
+        private volatile bool _xpInherited = false;
+        public bool GoalCompleted = false;
 
         public DeathLinkService deathLinkService;
         public bool deathLinkEnabled = false;
@@ -46,7 +57,8 @@ namespace BloonsArchipelago.Utils
         public ConcurrentDictionary<string, byte> previousNotifications = new();
 
 
-        private volatile bool _suppressNotifications = true;
+        private readonly object _itemLock = new();
+        private int _itemsHandled = 0;
 
         public List<string> MapsUnlocked = new();
         public List<string> MonkeysUnlocked = new();
@@ -54,7 +66,8 @@ namespace BloonsArchipelago.Utils
         public List<string> HeroesUnlocked = new();
 
         public int ProgressiveKnowledgeCount = 0;
-        public bool ProgressiveKnowledgeMode = false;
+        public int KnowledgeMode = 0;
+        public bool KnowledgeAutoActivates => KnowledgeMode != 0;
 
         private static readonly Dictionary<string, int> KnowledgeLayerMap = new()
         {
@@ -97,14 +110,15 @@ namespace BloonsArchipelago.Utils
             { "GrandPrixSpree", 6 },
         };
 
-        private void RefreshKnowledgeUnlocked()
+        private static List<string> BuildProgressiveKnowledge(int count)
         {
-            KnowledgeUnlocked.Clear();
+            var unlocked = new List<string>();
             foreach (var entry in KnowledgeLayerMap)
             {
-                if (entry.Value <= ProgressiveKnowledgeCount)
-                    KnowledgeUnlocked.Add(entry.Key);
+                if (entry.Value <= count)
+                    unlocked.Add(entry.Key);
             }
+            return unlocked;
         }
 
         public static MapDetails[] defaultMapList;
@@ -187,6 +201,8 @@ namespace BloonsArchipelago.Utils
         public long Tier4PopRequirement = 25000;
         public long Tier5PopRequirement = 100000;
         public HashSet<string> PermanentlyUnlockedTiers = new();
+        // Pop-tier checks are sent when the upgrade is bought, not when it unlocks
+        public HashSet<string> PurchasedTiers = new();
         public Dictionary<string, long> CumulativePops = new();
         public Dictionary<string, long> SessionEndLivePops = new();
 
@@ -218,8 +234,12 @@ namespace BloonsArchipelago.Utils
             catch { }
         }
 
-        public SessionHandler(string url, int port, string slot, string password)
+        public SessionHandler(string url, int port, string slot, string password,
+            ConcurrentDictionary<string, byte> seenNotifications = null)
         {
+            if (seenNotifications != null)
+                previousNotifications = new ConcurrentDictionary<string, byte>(seenNotifications);
+
             RefreshDefaultMapList();
 
             session = ArchipelagoSessionFactory.CreateSession(url, port);
@@ -282,137 +302,23 @@ namespace BloonsArchipelago.Utils
 
             session.Socket.SocketClosed += (reason) =>
             {
-                ready = false;
                 MelonLogger.Warning("[BloonsArchipelago] Disconnected from Archipelago server.");
+                MarkConnectionLost();
             };
+
+            APID = session.RoomState.Seed;
+            if (BloonsArchipelago.notifJson.APWorlds.ContainsKey(APID))
+            {
+                foreach (var s in BloonsArchipelago.notifJson.APWorlds[APID])
+                    previousNotifications.TryAdd(s, 0);
+            }
+            LoadItemIndex();
 
             session.Items.ItemReceived += (receivedItemsHelper) =>
             {
-                try
-                {
-                    ItemInfo item = receivedItemsHelper.PeekItem();
-                    string itemName = item.ItemName;
-                    string itemPlayer = item.Player.Name;
-                    string itemLocation = item.LocationName;
-                    ModHelper.Msg<BloonsArchipelago>(itemName + " Received from Server");
-
-
-                    bool selfSend = item.Player.Slot == session.ConnectionInfo.Slot;
-                    string from = selfSend
-                        ? "You found it!"
-                        : "from " + itemPlayer;
-                    if (!selfSend)
-                    {
-                        try
-                        {
-                            string senderGame = item.Player.Game;
-                            if (!string.IsNullOrEmpty(senderGame))
-                                from += " (" + senderGame + ")";
-                        }
-                        catch { }
-                    }
-
-
-                    string fullText = "You've received " + itemName + " from " + itemPlayer + " at " + itemLocation;
-                    bool isNew = previousNotifications.TryAdd(fullText, 0);
-                    if (isNew && !_suppressNotifications)
-                    {
-                        notifications.Enqueue(new APNotification
-                        {
-                            Category = GetItemCategory(itemName),
-                            ItemName = GetCleanName(itemName),
-                            From     = from,
-                            FullText = fullText,
-                        });
-                    }
-                    if (itemName is not null)
-                    {
-                        if (itemName.Contains("-MUnlock"))
-                        {
-                            MapsUnlocked.Add(GameIdToApId(itemName.Replace("-MUnlock", "")));
-                        }
-                        else if (itemName.Contains("-TUnlock"))
-                        {
-                            MonkeysUnlocked.Add(itemName.Replace("-TUnlock", ""));
-                        }
-                        else if (itemName == "Progressive Knowledge")
-                        {
-                            ProgressiveKnowledgeCount++;
-                            RefreshKnowledgeUnlocked();
-                        }
-                        else if (itemName.Contains("-KUnlock"))
-                        {
-                            KnowledgeUnlocked.Add(itemName.Replace("-KUnlock", ""));
-                        }
-                        else if (itemName.Contains("-HUnlock"))
-                        {
-                            HeroesUnlocked.Add(itemName.Replace("-HUnlock", ""));
-                        }
-                        else if (itemName.EndsWith("-TopPath") || itemName.EndsWith("-MiddlePath") || itemName.EndsWith("-BottomPath"))
-                        {
-                            if (!PathsUnlocked.Contains(itemName))
-                                PathsUnlocked.Add(itemName);
-                        }
-                        else if (itemName == "Progressive Prices")
-                        {
-                            ProgressivePricesCount++;
-                        }
-                        else if (itemName == "Progressive Starting Cash")
-                        {
-                            ProgressiveStartingCashCount++;
-                        }
-                        else if (CategoryTowers.ContainsKey(itemName))
-                        {
-                            foreach (var tower in CategoryTowers[itemName])
-                                if (!MonkeysUnlocked.Contains(tower))
-                                    MonkeysUnlocked.Add(tower);
-                        }
-                        else if (TrapLink.IsNativeTrap(itemName))
-                        {
-                            // Only link traps that went off here and are new, so replayed items are never re-broadcast.
-                            if (QueueTrap(itemName) && isNew && trapLinkEnabled)
-                                SendTrapLink(itemName);
-                        }
-                        else if (itemName == "Monkey Boost")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.MonkeyBoostManager.PendingBoostCount++;
-                            }
-                        }
-                        else if (itemName == "Monkey Storm")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.MonkeyStormManager.PendingStormCount++;
-                            }
-                        }
-                        else if (itemName == "Cash Drop")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.CashDropManager.PendingCashDropCount++;
-                            }
-                        }
-                        else if (itemName == "Thrive")
-                        {
-                            if (Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null)
-                            {
-                                Patches.InMap.ThriveManager.PendingThriveCount++;
-                            }
-                        }
-                        else if (itemName == "Medal")
-                        {
-                            Medals++;
-                        }
-                    }
-                    receivedItemsHelper.DequeueItem();
-                }
-                catch (Exception ex)
-                {
-                    MelonLogger.Warning($"[BloonsArchipelago] Error processing received item: {ex.Message}");
-                    try { receivedItemsHelper.DequeueItem(); } catch { }
-                }
+                // Items are handled by their index in AllItemsReceived; the helper's queue is just drained
+                try { receivedItemsHelper.DequeueItem(); } catch { }
+                ProcessNewItems();
             };
 
             session.MessageLog.OnMessageReceived += (message) =>
@@ -459,13 +365,6 @@ namespace BloonsArchipelago.Utils
                 catch { }
             };
 
-            APID = session.RoomState.Seed;
-            if (BloonsArchipelago.notifJson.APWorlds.ContainsKey(APID))
-            {
-                foreach (var s in BloonsArchipelago.notifJson.APWorlds[APID])
-                    previousNotifications.TryAdd(s, 0);
-            }
-
             var staticXPReq = (Int64)slotData["staticXPReq"];
             var maxLevel    = (Int64)slotData["maxLevel"];
             var xpCurve     = (bool)slotData["xpCurve"];
@@ -483,7 +382,8 @@ namespace BloonsArchipelago.Utils
                         {
                             try
                             {
-                                XPTracker = new ArchipelagoXP(savedLevel, xpTask.Result, staticXPReq, maxLevel, xpCurve);
+                                if (!_xpInherited)
+                                    XPTracker = new ArchipelagoXP(savedLevel, xpTask.Result, staticXPReq, maxLevel, xpCurve);
                             }
                             catch { }
                         });
@@ -552,8 +452,10 @@ namespace BloonsArchipelago.Utils
             if (slotData.ContainsKey("goal"))
                 GoalType = (int)(Int64)slotData["goal"];
 
-            if (slotData.ContainsKey("progressiveKnowledge"))
-                ProgressiveKnowledgeMode = (bool)slotData["progressiveKnowledge"];
+            if (slotData.ContainsKey("knowledgeMode"))
+                KnowledgeMode = (int)(Int64)slotData["knowledgeMode"];
+            else if (slotData.ContainsKey("progressiveKnowledge") && (bool)slotData["progressiveKnowledge"])
+                KnowledgeMode = 2;
 
             if (slotData.ContainsKey("roundSanity"))
                 RoundSanityInterval = (int)(Int64)slotData["roundSanity"];
@@ -622,17 +524,122 @@ namespace BloonsArchipelago.Utils
 
             LoadProgress();
 
-            _suppressNotifications = false;
+            // Catch anything that arrived before ItemReceived was subscribed.
+            ProcessNewItems();
         }
 
-        private string GetProgressSavePath()
+        private string GetSavePath(string prefix, string extension)
         {
             string key = $"{session.RoomState.Seed}_{PlayerSlotName()}";
             foreach (char c in Path.GetInvalidFileNameChars())
                 key = key.Replace(c, '_');
             string dir = Path.Combine(Environment.CurrentDirectory, "UserData", "BloonsArchipelago");
             Directory.CreateDirectory(dir);
-            return Path.Combine(dir, $"PopProgress_{key}.json");
+            return Path.Combine(dir, $"{prefix}_{key}.{extension}");
+        }
+
+        private string GetProgressSavePath() => GetSavePath("PopProgress", "json");
+
+        private void LoadItemIndex()
+        {
+            try
+            {
+                string path = GetSavePath("ItemIndex", "txt");
+                if (File.Exists(path) && int.TryParse(File.ReadAllText(path).Trim(), out int saved))
+                {
+                    _itemsHandled = saved;
+                    return;
+                }
+
+                int seen = 0;
+                foreach (string text in previousNotifications.Keys)
+                    if (text.StartsWith("You've received ")) seen++;
+                _itemsHandled = seen;
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[BloonsArchipelago] Failed to load item index: {ex.Message}");
+            }
+        }
+
+        private void SaveItemIndex()
+        {
+            try { File.WriteAllText(GetSavePath("ItemIndex", "txt"), _itemsHandled.ToString()); }
+            catch (Exception ex) { MelonLogger.Warning($"[BloonsArchipelago] Failed to save item index: {ex.Message}"); }
+        }
+
+        public void ProcessNewItems()
+        {
+            if (session == null) return;
+            bool handledAny = false;
+            lock (_itemLock)
+            {
+                List<ItemInfo> items;
+                try
+                {
+                    if (session.Items.AllItemsReceived.Count <= _itemsHandled) return;
+                    items = new List<ItemInfo>(session.Items.AllItemsReceived);
+                }
+                catch { return; }
+
+                for (int i = _itemsHandled; i < items.Count; i++)
+                {
+                    try { HandleNewItem(items[i]); }
+                    catch (Exception ex) { MelonLogger.Warning($"[BloonsArchipelago] Error processing received item: {ex.Message}"); }
+                }
+                _itemsHandled = items.Count;
+                SaveItemIndex();
+                handledAny = true;
+            }
+            if (handledAny) SyncReceivedItems();
+        }
+
+        private void HandleNewItem(ItemInfo item)
+        {
+            string itemName = item?.ItemName;
+            if (itemName == null) return;
+            string itemPlayer = item.Player?.Name ?? "?";
+            ModHelper.Msg<BloonsArchipelago>(itemName + " Received from Server");
+
+            bool selfSend = item.Player?.Slot == session.ConnectionInfo.Slot;
+            string from = selfSend ? "You found it!" : "from " + itemPlayer;
+            if (!selfSend)
+            {
+                try
+                {
+                    string senderGame = item.Player?.Game;
+                    if (!string.IsNullOrEmpty(senderGame))
+                        from += " (" + senderGame + ")";
+                }
+                catch { }
+            }
+
+            string fullText = "You've received " + itemName + " from " + itemPlayer + " at " + item.LocationName;
+            previousNotifications.TryAdd(fullText, 0);
+            notifications.Enqueue(new APNotification
+            {
+                Category = GetItemCategory(itemName),
+                ItemName = GetCleanName(itemName),
+                From     = from,
+                FullText = fullText,
+            });
+
+            bool inGame = Il2CppAssets.Scripts.Unity.UI_New.InGame.InGame.instance != null;
+            if (TrapLink.IsNativeTrap(itemName))
+            {
+                if (QueueTrap(itemName) && trapLinkEnabled)
+                    SendTrapLink(itemName);
+            }
+            else if (!inGame)
+                return;
+            else if (itemName == "Monkey Boost")
+                Patches.InMap.MonkeyBoostManager.PendingBoostCount++;
+            else if (itemName == "Monkey Storm")
+                Patches.InMap.MonkeyStormManager.PendingStormCount++;
+            else if (itemName == "Cash Drop")
+                Patches.InMap.CashDropManager.PendingCashDropCount++;
+            else if (itemName == "Thrive")
+                Patches.InMap.ThriveManager.PendingThriveCount++;
         }
 
         public void SaveProgress()
@@ -644,7 +651,8 @@ namespace BloonsArchipelago.Utils
                 {
                     CumulativePops = new Dictionary<string, long>(CumulativePops),
                     SessionEndLivePops = new Dictionary<string, long>(SessionEndLivePops),
-                    PermanentlyUnlockedTiers = new List<string>(PermanentlyUnlockedTiers)
+                    PermanentlyUnlockedTiers = new List<string>(PermanentlyUnlockedTiers),
+                    PurchasedTiers = new List<string>(PurchasedTiers)
                 };
                 File.WriteAllText(GetProgressSavePath(), JsonSerializer.Serialize(data));
             }
@@ -669,6 +677,8 @@ namespace BloonsArchipelago.Utils
                     SessionEndLivePops = data.SessionEndLivePops;
                 if (data.PermanentlyUnlockedTiers != null)
                     PermanentlyUnlockedTiers = new HashSet<string>(data.PermanentlyUnlockedTiers);
+                if (data.PurchasedTiers != null)
+                    PurchasedTiers = new HashSet<string>(data.PurchasedTiers);
                 MelonLogger.Msg($"[BloonsArchipelago] Loaded pop progress ({CumulativePops.Count} tower(s), {PermanentlyUnlockedTiers.Count} tier(s) unlocked).");
             }
             catch (Exception ex)
@@ -709,6 +719,8 @@ namespace BloonsArchipelago.Utils
             {
                 long locationID = ResolveLocationId(checkstring);
                 if (locationID == -1) return;
+                _attemptedChecks.TryAdd(locationID, 0);
+                if (!Connected) return; // resent by InheritStateFrom after reconnecting
                 Task.Run(() =>
                 {
                     try { session.Locations.CompleteLocationChecks(locationID); } catch { }
@@ -721,52 +733,147 @@ namespace BloonsArchipelago.Utils
         {
             if (session == null) return;
 
-            MapsUnlocked.Clear();
-            MonkeysUnlocked.Clear();
-            KnowledgeUnlocked.Clear();
-            HeroesUnlocked.Clear();
-            PathsUnlocked.Clear();
-            Medals = 0;
-            ProgressiveKnowledgeCount = 0;
-            ProgressivePricesCount = 0;
-            ProgressiveStartingCashCount = 0;
-
-            foreach (var item in session.Items.AllItemsReceived)
+            lock (_syncLock)
             {
-                string itemName = item.ItemName;
-                if (itemName == null) continue;
+                List<ItemInfo> items;
+                try { items = new List<ItemInfo>(session.Items.AllItemsReceived); }
+                catch { return; }
 
-                if (itemName.Contains("-MUnlock"))
-                    MapsUnlocked.Add(GameIdToApId(itemName.Replace("-MUnlock", "")));
-                else if (itemName.Contains("-TUnlock"))
-                    MonkeysUnlocked.Add(itemName.Replace("-TUnlock", ""));
-                else if (itemName == "Progressive Knowledge")
-                    ProgressiveKnowledgeCount++;
-                else if (itemName == "Progressive Prices")
-                    ProgressivePricesCount++;
-                else if (itemName == "Progressive Starting Cash")
-                    ProgressiveStartingCashCount++;
-                else if (CategoryTowers.ContainsKey(itemName))
+                if (items.Count < _syncedItemCount) return;
+
+                var maps = new List<string>();
+                var monkeys = new List<string>();
+                var knowledge = new List<string>();
+                var heroes = new List<string>();
+                var paths = new List<string>();
+                int medals = 0, knowledgeCount = 0, pricesCount = 0, startingCashCount = 0;
+
+                foreach (var item in items)
                 {
-                    foreach (var tower in CategoryTowers[itemName])
-                        if (!MonkeysUnlocked.Contains(tower))
-                            MonkeysUnlocked.Add(tower);
+                    string itemName = item?.ItemName;
+                    if (itemName == null) continue;
+
+                    if (itemName.Contains("-MUnlock"))
+                        maps.Add(GameIdToApId(itemName.Replace("-MUnlock", "")));
+                    else if (itemName.Contains("-TUnlock"))
+                        monkeys.Add(itemName.Replace("-TUnlock", ""));
+                    else if (itemName == "Progressive Knowledge")
+                        knowledgeCount++;
+                    else if (itemName == "Progressive Prices")
+                        pricesCount++;
+                    else if (itemName == "Progressive Starting Cash")
+                        startingCashCount++;
+                    else if (CategoryTowers.ContainsKey(itemName))
+                    {
+                        foreach (var tower in CategoryTowers[itemName])
+                            if (!monkeys.Contains(tower))
+                                monkeys.Add(tower);
+                    }
+                    else if (itemName.Contains("-KUnlock"))
+                        knowledge.Add(itemName.Replace("-KUnlock", ""));
+                    else if (itemName.Contains("-HUnlock"))
+                        heroes.Add(itemName.Replace("-HUnlock", ""));
+                    else if (itemName.EndsWith("-TopPath") || itemName.EndsWith("-MiddlePath") || itemName.EndsWith("-BottomPath"))
+                    {
+                        if (!paths.Contains(itemName))
+                            paths.Add(itemName);
+                    }
+                    else if (itemName == "Medal")
+                        medals++;
                 }
-                else if (itemName.Contains("-KUnlock"))
-                    KnowledgeUnlocked.Add(itemName.Replace("-KUnlock", ""));
-                else if (itemName.Contains("-HUnlock"))
-                    HeroesUnlocked.Add(itemName.Replace("-HUnlock", ""));
-                else if (itemName.EndsWith("-TopPath") || itemName.EndsWith("-MiddlePath") || itemName.EndsWith("-BottomPath"))
+
+                if (knowledgeCount > 0)
+                    knowledge = BuildProgressiveKnowledge(knowledgeCount);
+
+                MapsUnlocked = maps;
+                MonkeysUnlocked = monkeys;
+                KnowledgeUnlocked = knowledge;
+                HeroesUnlocked = heroes;
+                PathsUnlocked = paths;
+                Medals = medals;
+                ProgressiveKnowledgeCount = knowledgeCount;
+                ProgressivePricesCount = pricesCount;
+                ProgressiveStartingCashCount = startingCashCount;
+                _syncedItemCount = items.Count;
+            }
+        }
+
+        public void InheritStateFrom(SessionHandler old)
+        {
+            if (old == null || old == this) return;
+
+            lock (_syncLock)
+            {
+                if (old._syncedItemCount > _syncedItemCount)
                 {
-                    if (!PathsUnlocked.Contains(itemName))
-                        PathsUnlocked.Add(itemName);
+                    MapsUnlocked = new List<string>(old.MapsUnlocked);
+                    MonkeysUnlocked = new List<string>(old.MonkeysUnlocked);
+                    KnowledgeUnlocked = new List<string>(old.KnowledgeUnlocked);
+                    HeroesUnlocked = new List<string>(old.HeroesUnlocked);
+                    PathsUnlocked = new List<string>(old.PathsUnlocked);
+                    Medals = old.Medals;
+                    ProgressiveKnowledgeCount = old.ProgressiveKnowledgeCount;
+                    ProgressivePricesCount = old.ProgressivePricesCount;
+                    ProgressiveStartingCashCount = old.ProgressiveStartingCashCount;
+                    _syncedItemCount = old._syncedItemCount;
                 }
-                else if (itemName == "Medal")
-                    Medals++;
+            }
+            SyncReceivedItems();
+
+            currentMap = old.currentMap;
+            currentMode = old.currentMode;
+            ModifiedBloonsRoundsRemaining += old.ModifiedBloonsRoundsRemaining;
+            SpeedUpRoundsRemaining += old.SpeedUpRoundsRemaining;
+
+            CumulativePops = new Dictionary<string, long>(old.CumulativePops);
+            SessionEndLivePops = new Dictionary<string, long>(old.SessionEndLivePops);
+            PermanentlyUnlockedTiers.UnionWith(old.PermanentlyUnlockedTiers);
+            PurchasedTiers.UnionWith(old.PurchasedTiers);
+
+            if (old.XPTracker != null)
+            {
+                _xpInherited = true;
+                XPTracker = old.XPTracker;
+                SaveXP();
             }
 
-            if (ProgressiveKnowledgeCount > 0)
-                RefreshKnowledgeUnlocked();
+            var pending = new List<long>();
+            foreach (long id in old._attemptedChecks.Keys)
+            {
+                _attemptedChecks.TryAdd(id, 0);
+                try
+                {
+                    if (!session.Locations.AllLocationsChecked.Contains(id))
+                        pending.Add(id);
+                }
+                catch { pending.Add(id); }
+            }
+            if (pending.Count > 0)
+            {
+                MelonLogger.Msg($"[BloonsArchipelago] Resending {pending.Count} check(s) made while disconnected.");
+                Task.Run(() =>
+                {
+                    try { session.Locations.CompleteLocationChecks(pending.ToArray()); } catch { }
+                });
+            }
+
+            if (old.GoalCompleted && !GoalCompleted)
+                CompleteRando();
+        }
+
+        public void SaveXP()
+        {
+            if (!Connected || XPTracker == null) return;
+            try
+            {
+                string slotName = PlayerSlotName();
+                session.DataStorage["Level-" + slotName] = XPTracker.Level;
+                session.DataStorage["XP-" + slotName] = XPTracker.XP;
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[BloonsArchipelago] Failed to save XP: {ex.Message}");
+            }
         }
 
         public void RefreshAllData()
@@ -778,12 +885,20 @@ namespace BloonsArchipelago.Utils
 
         public void CompleteRando()
         {
-            StatusUpdatePacket statusUpdatePackage = new StatusUpdatePacket
-            {
-                Status = ArchipelagoClientState.ClientGoal
-            };
-            session.Socket.SendPacket(statusUpdatePackage);
+            GoalCompleted = true;
             BloonsArchipelago.notifJson.APWorlds.Remove(APID);
+            if (!Connected) return; // resent by InheritStateFrom after reconnecting
+            try
+            {
+                session.Socket.SendPacket(new StatusUpdatePacket
+                {
+                    Status = ArchipelagoClientState.ClientGoal
+                });
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[BloonsArchipelago] Failed to send goal: {ex.Message}");
+            }
         }
 
         public bool LocationChecked(string locationString)
@@ -839,7 +954,7 @@ namespace BloonsArchipelago.Utils
 
         public void ApplyDeathLinkToggle(bool enabled)
         {
-            if (deathLinkService == null) return;
+            if (deathLinkService == null || !Connected) return;
             if (deathLinkForcedOn) enabled = true;
             try
             {
@@ -862,8 +977,27 @@ namespace BloonsArchipelago.Utils
             }
         }
 
+        public void MarkConnectionLost()
+        {
+            lock (_connectionLostLock)
+            {
+                if (_userDisconnected || ConnectionLost) return;
+                ConnectionLost = true;
+            }
+            notifications.Enqueue(new APNotification
+            {
+                ItemName   = "Connection lost.",
+                From       = "Trying to reconnect...",
+                FullText   = "ConnectionLost",
+                IsOutgoing = true,
+                ItemColor  = new UnityEngine.Color(1.00f, 0.27f, 0.27f),
+            });
+        }
+
         public void Disconnect()
         {
+            _userDisconnected = true;
+            ConnectionLost = false;
             if (!ready) return;
             try { session?.Socket?.DisconnectAsync(); } catch { }
             ready = false;
@@ -899,7 +1033,7 @@ namespace BloonsArchipelago.Utils
 
         public void ApplyTrapLinkToggle(bool enabled)
         {
-            if (!ready || session == null) return;
+            if (!Connected || session == null) return;
             if (trapLinkForcedOn) enabled = true;
             if (enabled == trapLinkEnabled) return;
             try

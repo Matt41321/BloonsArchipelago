@@ -1,4 +1,4 @@
-﻿using MelonLoader;
+using MelonLoader;
 using BTD_Mod_Helper;
 
 using BloonsArchipelago;
@@ -18,6 +18,7 @@ using Il2CppAssets.Scripts.Unity;
 using Il2CppAssets.Scripts.Unity.Menu;
 using Il2CppAssets.Scripts.Unity.UI_New.Main.ModeSelect;
 using Il2CppAssets.Scripts.Models;
+using Il2CppAssets.Scripts.Models.Towers;
 using Il2CppAssets.Scripts.Simulation.Towers;
 using UnityEngine;
 
@@ -47,10 +48,11 @@ public class BloonsArchipelago : BloonsTD6Mod
     {
         if (sessionHandler.ready)
         {
+            bool reconnecting = sessionHandler.ConnectionLost;
             sessionHandler.notifications.Enqueue(new Utils.APNotification
             {
-                ItemName   = "Already connected.",
-                From       = "Disconnect first to reconnect.",
+                ItemName   = reconnecting ? "Reconnecting..." : "Already connected.",
+                From       = reconnecting ? "Disconnect to stop retrying." : "Disconnect first to reconnect.",
                 FullText   = "AlreadyConnected",
                 IsOutgoing = true,
                 ItemColor  = UnityEngine.Color.white,
@@ -64,6 +66,7 @@ public class BloonsArchipelago : BloonsTD6Mod
 
         if (sessionHandler.ready)
         {
+            Patches.InMap.PopTierLockPatch.ResyncChecks();
             sessionHandler.notifications.Enqueue(new Utils.APNotification
             {
                 ItemName   = "You have connected.",
@@ -89,6 +92,13 @@ public class BloonsArchipelago : BloonsTD6Mod
     {
         if (!sessionHandler.ready)
         {
+            if (sessionHandler.ConnectionLost)
+            {
+                sessionHandler.Disconnect();
+                sessionHandler = new SessionHandler();
+                ModHelper.Msg<BloonsArchipelago>("Stopped reconnecting.");
+                return;
+            }
             ModHelper.Msg<BloonsArchipelago>("Not connected.");
             return;
         }
@@ -154,7 +164,7 @@ public class BloonsArchipelago : BloonsTD6Mod
         try
         {
             var sh = sessionHandler;
-            if (sh == null || !sh.ready || !sh.PopTierChecksEnabled) return;
+            if (sh == null || sh.session == null || !sh.PopTierChecksEnabled) return;
 
             var inGame = InGame.instance;
             if (inGame == null) return;
@@ -174,6 +184,7 @@ public class BloonsArchipelago : BloonsTD6Mod
                 }
                 catch { }
             }
+            sh.SaveProgress();
         }
         catch { }
     }
@@ -183,7 +194,7 @@ public class BloonsArchipelago : BloonsTD6Mod
         try
         {
             var sh = sessionHandler;
-            if (sh == null || !sh.ready || !sh.PopTierChecksEnabled) return;
+            if (sh == null || sh.session == null || !sh.PopTierChecksEnabled) return;
             string baseId = tower?.towerModel?.baseId;
             if (string.IsNullOrEmpty(baseId) || baseId == "MonkeyVillage") return;
 
@@ -214,6 +225,16 @@ public class BloonsArchipelago : BloonsTD6Mod
             sh.CumulativePops[baseId] = aggregate;
             sh.SessionEndLivePops[baseId] = liveRemaining;
             sh.SaveProgress();
+        }
+        catch { }
+    }
+
+    public override void OnTowerUpgraded(Tower tower, string upgradeName, TowerModel newBaseTowerModel)
+    {
+        try
+        {
+            var model = newBaseTowerModel ?? tower?.towerModel;
+            Patches.InMap.PopTierLockPatch.OnTowerUpgraded(model?.baseId, model?.tiers);
         }
         catch { }
     }
@@ -335,6 +356,9 @@ public class BloonsArchipelago : BloonsTD6Mod
     {
         TryDumpXPTable();
 
+        AutoReconnect.Update(url, port, slot, password);
+        if (sessionHandler.Connected)
+            sessionHandler.ProcessNewItems(); // backstop in case an ItemReceived event was missed
         ProcessNotifications();
         Patches.InMap.APNotificationPanel.Update();
 
@@ -443,7 +467,9 @@ public class BloonsArchipelago : BloonsTD6Mod
             var notif = pendingNotifications.Dequeue();
             bool isConnectionNotif = notif.FullText == "Connected"
                                   || notif.FullText == "ConnectionFailed"
-                                  || notif.FullText == "AlreadyConnected";
+                                  || notif.FullText == "AlreadyConnected"
+                                  || notif.FullText == "ConnectionLost"
+                                  || notif.FullText == "Reconnected";
             if (showNotifications || isConnectionNotif)
                 Patches.InMap.APNotificationPanel.Show(notif);
             lastNotificationTime = now;
